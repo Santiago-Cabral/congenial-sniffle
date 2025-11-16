@@ -1,0 +1,23 @@
+@import "tailwindcss/preflight";
+@import "tailwindcss";
+:root {
+  --color-primary: #5B8C5A;
+  --color-secondary: #E6E2D3;
+  --color-accent: #A4C3A2;
+  --color-dark: #2F3E2F;
+  --color-light: #F9F9F6;
+}
+
+body {
+  background: var(--color-light);
+  font-family: 'Poppins', sans-serif;
+  color: var(--color-dark);
+}
+@keyframes fade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade {
+  animation: fade 0.8s ease-out forwards;
+}
