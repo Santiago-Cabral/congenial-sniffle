@@ -1,36 +1,49 @@
-import { Link } from "react-router-dom";
-import { ShoppingCart } from "lucide-react";
+import { Link, NavLink } from "react-router-dom";
+import { Search, User, ShoppingCart } from "lucide-react";
+import { useCart } from "../Context/CartContext.jsx";
 
-export default function Navbar() {
+export default function Navbar({ onOpenCart }) {
+  const { cart } = useCart();
+
   return (
-    <header className="bg-(--color-primary) text-white shadow-lg fixed top-0 w-full z-50">
-      <nav className="container mx-auto flex justify-between items-center py-4 px-6">
-        <Link to="/" className="text-2xl font-bold">
-          Jovita 🐶🌾
-        </Link>
-
-        <ul className="flex gap-6 text-lg font-medium">
-          <li>
-            <Link to="/" className="hover:text-(--color-secondary) transition">Inicio</Link>
-          </li>
-          <li>
-            <Link to="/productos" className="hover:text-(--color-secondary) transition">Productos</Link>
-          </li>
-        </ul>
-
-        <div className="flex items-center gap-5">
-          <Link to="/login" className="hover:text-(--color-secondary) transition">
-            Admin
+    <header className="fixed top-0 left-0 right-0 bg-white border-b border-black/5 z-50">
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20">
+        
+        {/* Logo + Links */}
+        <div className="flex items-center gap-6">
+          <Link to="/" className="flex items-center gap-3">
+            <img src="/logo-jovita.png" alt="Jovita" className="w-12 h-12 rounded-full bg-white p-1" />
           </Link>
 
-          <button className="relative">
-            <ShoppingCart size={26} />
-            <span className="absolute -top-2 -right-2 bg-white text-(--color-primary) text-xs font-bold rounded-full px-1">
-              0
-            </span>
+          <nav className="hidden lg:flex gap-8 items-center">
+            <NavLink to="/" className="nav-link">Inicio</NavLink>
+            <NavLink to="/productos" className="nav-link">Productos</NavLink>
+            <NavLink to="/nosotros" className="nav-link">Nosotros</NavLink>
+            <NavLink to="/contacto" className="nav-link">Contacto</NavLink>
+          </nav>
+        </div>
+
+        {/* Icons */}
+        <div className="flex items-center gap-6">
+          <button className="icon-btn">
+            <Search size={18} />
+          </button>
+          <Link to="/login" className="icon-btn">
+            <User size={18} />
+          </Link>
+
+          {/* Carrito */}
+          <button onClick={onOpenCart} className="relative icon-btn">
+            <ShoppingCart size={20} />
+            {cart.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[var(--accent)] text-white text-xs font-bold rounded-full px-1">
+                {cart.reduce((sum, p) => sum + (p.qty || 1), 0)}
+              </span>
+            )}
           </button>
         </div>
-      </nav>
+
+      </div>
     </header>
   );
 }
