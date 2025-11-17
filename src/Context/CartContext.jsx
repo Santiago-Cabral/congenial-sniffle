@@ -1,44 +1,35 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  const [cart, setCart] = useState(() => {
-    try {
-      const raw = localStorage.getItem("cart_v1");
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [cart, setCart] = useState([]);
+  const [total, setTotal] = useState(0);
 
+  // recalcula el total cada vez que cambia el carrito
   useEffect(() => {
-    localStorage.setItem("cart_v1", JSON.stringify(cart));
+    const newTotal = cart.reduce((acc, item) => acc + (item.costPrice || 0) * (item.qty || 1), 0);
+    setTotal(newTotal);
   }, [cart]);
 
-  const addToCart = (product, qty = 1) => {
+  const addToCart = (product) => {
     setCart((prev) => {
-      const idx = prev.findIndex((p) => p.id === product.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx].qty += qty;
-        return copy;
+      const existing = prev.find((p) => p.id === product.id);
+      if (existing) {
+        return prev.map((p) =>
+          p.id === product.id ? { ...p, qty: (p.qty || 1) + 1 } : p
+        );
       }
-      return [...prev, { ...product, qty }];
+      return [...prev, { ...product, qty: 1 }];
     });
   };
 
-  const removeFromCart = (id) => {
-    setCart((prev) => prev.filter((p) => p.id !== id));
-  };
+  const removeFromCart = (id) => setCart((prev) => prev.filter((p) => p.id !== id));
 
-  const updateQty = (id, qty) => {
-    setCart((prev) => prev.map(p => p.id === id ? {...p, qty} : p));
-  };
+  const updateQty = (id, qty) =>
+    setCart((prev) => prev.map((p) => (p.id === id ? { ...p, qty } : p)));
 
   const clearCart = () => setCart([]);
-
-  const total = cart.reduce((s, p) => s + (p.price * (p.qty || 1)), 0);
 
   return (
     <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQty, clearCart, total }}>
@@ -47,6 +38,4 @@ export function CartProvider({ children }) {
   );
 }
 
-export function useCart(){
-  return useContext(CartContext);
-}
+export const useCart = () => useContext(CartContext);

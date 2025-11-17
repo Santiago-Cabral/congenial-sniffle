@@ -17,7 +17,7 @@ export default function Navbar({ onOpenCart }) {
 
           <nav className="hidden lg:flex gap-8 items-center">
             <NavLink to="/" className="nav-link">Inicio</NavLink>
-            <NavLink to="/productos" className="nav-link">Productos</NavLink>
+            <NavLink to="/products" className="nav-link">Productos</NavLink>
             <NavLink to="/nosotros" className="nav-link">Nosotros</NavLink>
             <NavLink to="/contacto" className="nav-link">Contacto</NavLink>
           </nav>
