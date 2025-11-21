@@ -1,48 +1,53 @@
-import { Link, NavLink } from "react-router-dom";
 import { Search, User, ShoppingCart } from "lucide-react";
-import { useCart } from "../Context/CartContext.jsx";
+import { Link } from "react-router-dom";
+import { useCart } from "../context/CartContext";
 
 export default function Navbar({ onOpenCart }) {
   const { cart } = useCart();
+  const qty = cart.reduce((s, c) => s + (c.qty || 1), 0);
 
   return (
-    <header className="fixed top-0 left-0 right-0 bg-white border-b border-black/5 z-50">
+    <header className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20">
-        
-        {/* Logo + Links */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-3">
-            <img src="/logo-jovita.png" alt="Jovita" className="w-12 h-12 rounded-full bg-white p-1" />
+            <img src="/logo-jovita.png" alt="Jovita" className="h-12" />
           </Link>
 
-          <nav className="hidden lg:flex gap-8 items-center">
-            <NavLink to="/" className="nav-link">Inicio</NavLink>
-            <NavLink to="/products" className="nav-link">Productos</NavLink>
-            <NavLink to="/nosotros" className="nav-link">Nosotros</NavLink>
-            <NavLink to="/contacto" className="nav-link">Contacto</NavLink>
+          <nav className="hidden md:flex gap-8">
+            <Link to="/" className="text-base font-semibold text-[#1C1C1C] hover:text-[#F24C00] transition">
+              Inicio
+            </Link>
+            <a href="#productos" className="text-base font-semibold text-[#1C1C1C] hover:text-[#F24C00] transition">
+              Productos
+            </a>
+            <a href="#nosotros" className="text-base font-semibold text-[#1C1C1C] hover:text-[#F24C00] transition">
+              Nosotros
+            </a>
+            <Link to="/contacto" className="text-base font-semibold text-[#1C1C1C] hover:text-[#F24C00] transition">
+              Contacto
+            </Link>
           </nav>
         </div>
 
-        {/* Icons */}
-        <div className="flex items-center gap-6">
-          <button className="icon-btn">
-            <Search size={18} />
+        <div className="flex items-center gap-2">
+          <button className="p-2 rounded-full hover:bg-gray-100 transition">
+            <Search size={20} />
           </button>
-          <Link to="/login" className="icon-btn">
-            <User size={18} />
+          
+          <Link to="/admin/login" className="p-2 rounded-full hover:bg-gray-100 transition">
+            <User size={20} />
           </Link>
-
-          {/* Carrito */}
-          <button onClick={onOpenCart} className="relative icon-btn">
+          
+          <button onClick={onOpenCart} className="relative p-2 rounded-full hover:bg-gray-100 transition">
             <ShoppingCart size={20} />
-            {cart.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[var(--accent)] text-white text-xs font-bold rounded-full px-1">
-                {cart.reduce((sum, p) => sum + (p.qty || 1), 0)}
+            {qty > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#F24C00] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {qty}
               </span>
             )}
           </button>
         </div>
-
       </div>
     </header>
   );

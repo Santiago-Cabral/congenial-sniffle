@@ -1,76 +1,82 @@
 import { Pill, Apple, HeartPulse, Leaf, Droplet, Coffee } from "lucide-react";
 
-const cats = [
+const categories = [
   { 
     title: "Suplementos", 
     count: "50+ productos", 
-    img: "/category-supplements.jpg", 
-    icon: Pill 
+    icon: Pill,
+    color: "#FFE8D8",
+    img: "/category-supplements.jpg"
   },
   { 
     title: "Alimentos Orgánicos", 
     count: "80+ productos", 
-    img: "/category-organic-foods.jpg", 
-    icon: Apple 
+    icon: Apple,
+    color: "#D4F4DD",
+    img: "/category-organic-foods.jpg"
   },
   { 
     title: "Vitaminas", 
     count: "40+ productos", 
-    img: "/category-vitamins.jpg", 
-    icon: HeartPulse 
+    icon: HeartPulse,
+    color: "#FFE0F0",
+    img: "/category-vitamins.jpg"
   },
   { 
     title: "Hierbas Naturales", 
     count: "30+ productos", 
-    img: "/category-herbs.jpg", 
-    icon: Leaf 
+    icon: Leaf,
+    color: "#E8F5E9",
+    img: "/category-herbs.jpg"
   },
   { 
     title: "Aceites Esenciales", 
     count: "25+ productos", 
-    img: "/category-essential-oils.jpg", 
-    icon: Droplet 
+    icon: Droplet,
+    color: "#E3F2FD",
+    img: "/category-essential-oils.jpg"
   },
   { 
     title: "Infusiones", 
     count: "35+ productos", 
-    img: "/category-teas.jpg", 
-    icon: Coffee 
+    icon: Coffee,
+    color: "#FFF3E0",
+    img: "/category-teas.jpg"
   }
 ];
 
 export default function CategoriesSection() {
   return (
-    <section className="max-w-7xl mx-auto px-6 py-16">
-      <h2 className="text-4xl font-bold text-center mb-10 h1-style" id="categoria">Categorías</h2>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
-        {cats.map((c, idx) => {
-          const Icon = c.icon;
-
-          return (
-            <div
-              key={idx}
-              className="relative rounded-xl overflow-hidden product-card group cursor-pointer transition-transform hover:scale-[1.03]"
-            >
-              <img
-                src={c.img}
-                alt={c.title}
-                className="w-full h-56 object-cover transition group-hover:scale-110"
-              />
-
-              <div className="absolute inset-0 bg-black/40 flex items-end p-6">
-                <div>
-                  <div className="w-12 h-12 rounded-full bg-white/25 center-row mb-3">
-                    <Icon size={26} color="white" strokeWidth={2.5} />
+    <section className="bg-white py-16" id="categorias">
+      <div className="max-w-7xl mx-auto px-6">
+        <h2 className="text-4xl font-extrabold text-center text-[#1C1C1C] mb-12">
+          Categorías
+        </h2>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          {categories.map((cat, idx) => {
+            const Icon = cat.icon;
+            return (
+              <div
+                key={idx}
+                className="group cursor-pointer"
+              >
+                <div 
+                  className="aspect-square rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all hover:scale-105 hover:shadow-xl shadow-md relative overflow-hidden"
+                  style={{ backgroundColor: cat.color }}
+                >
+                  <div className="w-16 h-16 rounded-full bg-white/80 flex items-center justify-center mb-4">
+                    <Icon size={32} color="#F24C00" strokeWidth={2} />
                   </div>
-                  <h3 className="text-white text-xl md:text-2xl font-bold">{c.title}</h3>
-                  <p className="text-white/80 mt-1 text-sm">{c.count}</p>
+                  <h3 className="font-bold text-[#1C1C1C] text-base mb-1">
+                    {cat.title}
+                  </h3>
+                  <p className="text-sm text-[#5A564E]">{cat.count}</p>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </section>
   );

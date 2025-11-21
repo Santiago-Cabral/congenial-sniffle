@@ -1,71 +1,49 @@
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Navbar from "./Components/Navbar";
-import HeroSlider from "./Components/HeroSlider";
+import Navbar from "./components/Navbar";
+import HeroSlider from "./components/HeroSlider";
 import CategoriesSection from "./Components/CategoriesSection";
 import FeaturesRow from "./Components/FeaturesRow";
-import FeaturedProducts from "./Components/FeaturedProducts";
-import AllProducts from "./Components/AllProducts";
-import AboutSection from "./Components/AboutSection";
-import Footer from "./Components/Footer";
+import FeaturedProducts from "./components/FeaturedProducts";
+import AboutSection from "./components/AboutSection";
+import Footer from "./components/Footer";
 import CartSidebar from "./Components/CartSidebar";
+import ProductPage from "./pages/Product";
 
-// Página individual de producto
-import Product from "./pages/Product";
+import AdminApp from "./admin/AppAdmin";
 
 export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
 
   return (
-    <BrowserRouter>
-      {/* Navbar con carrito */}
+    <>
       <Navbar onOpenCart={() => setCartOpen(true)} />
-
-      {/* Carrito */}
       <CartSidebar open={cartOpen} onClose={() => setCartOpen(false)} />
 
-      {/* Rutas principales */}
-      <Routes>
-        {/* Home */}
-        <Route
-          path="/"
-          element={
-            <>
-              <main className="top-0">
+      <main className="pt-20">
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <>
                 <HeroSlider />
                 <CategoriesSection />
-                <FeaturedProducts />
                 <FeaturesRow />
+                <FeaturedProducts />
                 <AboutSection />
-              </main>
-              <Footer />
-            </>
-          }
-        />
+              </>
+            }
+          />
 
-        {/* Página individual de producto */}
-        <Route
-          path="/product/:id"
-          element={
-            <>
-              <Product />
-              <Footer />
-            </>
-          }
-        />
+          <Route path="/product/:id" element={<ProductPage />} />
+          <Route path="/products" element={<FeaturedProducts />} />
+          <Route path="/login" element={<Navigate to="/admin/login" replace />} />
+          <Route path="/admin/*" element={<AdminApp />} />
+        </Routes>
+      </main>
+      <Footer />
 
-        {/* Todos los productos */}
-        <Route
-          path="/products"
-          element={
-            <>
-              <AllProducts />
-              <Footer />
-            </>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    </>
   );
 }
