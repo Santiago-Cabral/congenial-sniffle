@@ -1,10 +1,10 @@
+// /admin/components/ProtectedAdminRoute.jsx
+
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
+import { isAuthenticated } from "../admin/utils/auth.js";
 
-export default function ProtectedRoute({ children }) {
-  const { user } = useAuth();
-
-  if (!user) return <Navigate to="/login" replace />;
-
-  return children;
+export default function ProtectedAdminRoute({ children }) {
+  return isAuthenticated()
+    ? children
+    : <Navigate to="/admin/login" replace />;
 }

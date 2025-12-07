@@ -1,102 +1,260 @@
+// =======================================
+// 🌐 API SERVICE - FORRAJERÍA JOVITA
+// =======================================
+
+// Usa SIEMPRE el mismo archivo para admin y cliente
 const API_URL = "https://forrajeria-jovita-api.onrender.com/api";
 
-async function request(path, opts = {}) {
-  const url = `${API_URL}${path}`;
-  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
-  const res = await fetch(url, { ...opts, headers });
-  if (!res.ok) {
-    const text = await res.text().catch(()=>"");
-    throw new Error(`${res.status} ${text}`);
+// =============================
+// 🔐 TOKEN
+// =============================
+function getToken() {
+  return localStorage.getItem("token") || "";
+}
+
+// =============================
+// 🧰 HELPER REQUEST
+// =============================
+async function request(url, method = "GET", body = null, auth = false) {
+  const headers = { "Content-Type": "application/json" };
+
+  if (auth) {
+    const token = getToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
   }
-  const ct = res.headers.get("content-type") || "";
-  if (ct.includes("application/json")) return res.json();
-  return res.text();
+
+  const options = { method, headers };
+  if (body) options.body = JSON.stringify(body);
+
+  const res = await fetch(url, options);
+
+  if (!res.ok) {
+    let msg = `Error HTTP ${res.status}`;
+    try {
+      const t = await res.json();
+      msg = t.message || msg;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(msg);
+  }
+
+  if (res.status === 204) return null;
+  return res.json();
 }
 
-/* Products */
-export async function listProductsRaw() {
-  return request("/Products");
-}
-export async function listProducts() {
-  const arr = await listProductsRaw();
-  return (arr || []).map(mapProduct);
-}
-export async function getProductRaw(id) {
-  return request(`/Products/${id}`);
-}
-export async function getProduct(id) {
-  const p = await getProductRaw(id);
-  return mapProduct(p);
-}
-export async function createProduct(data) {
-  return request("/Products", { method: "POST", body: JSON.stringify(data) });
-}
-export async function updateProduct(id, data) {
-  return request(`/Products/${id}`, { method: "PUT", body: JSON.stringify(data) });
-}
-export async function deleteProduct(id) {
-  return request(`/Products/${id}`, { method: "DELETE" });
+// =======================================
+// 🔐 AUTH
+// =======================================
+export async function login(email, password) {
+  const data = await request(`${API_URL}/Auth/login`, "POST", {
+    email,
+    password,
+  });
+
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("user", JSON.stringify(data));
+
+  return data;
 }
 
-/* Branches */
-export const listBranches = () => request("/Branches");
-export const createBranch = (d) => request("/Branches", { method: "POST", body: JSON.stringify(d) });
-export const updateBranch = (id,d) => request(`/Branches/${id}`, { method: "PUT", body: JSON.stringify(d) });
-export const deleteBranch = (id) => request(`/Branches/${id}`, { method: "DELETE" });
+// =======================================
+// 📦 MAPEO DE PRODUCTOS
+// =======================================
+function getUnitLabel(unit) {
+  switch (Number(unit)) {
+    case 1:
+      return "Kilogramo";
+    case 2:
+      return "Unidad";
+    case 3:
+      return "Litro";
+    default:
+      return "Unidad";
+  }
+}
 
-/* Orders/Sales */
-export const listOrders = () => request("/Sales");
-export const getOrder = (id) => request(`/Sales/${id}`);
-export const updateOrder = (id, data) => request(`/Sales/${id}`, { method: "PUT", body: JSON.stringify(data) });
-export const createOrder = (data) => request(`/Sales`, { method: "POST", body: JSON.stringify(data) });
-
-/* Clients */
-export const listClients = () => request("/Clients");
-
-/* Users (login fallback) */
-export const listUsers = () => request("/Users");
-
-/* Map product from API to UI model */
-export function mapProduct(p = {}) {
+export function mapProduct(p) {
+  // 👇 Muy importante: traer STOCK e isActived del backend
   return {
     id: p.id,
-    code: p.code,
-    name: p.name,
-    price: p.retailPrice ?? 0,
-    costPrice: p.costPrice ?? 0,
-    wholesalePrice: p.wholesalePrice ?? 0,
-    isActived: !!p.isActived,
-    baseUnit: p.baseUnit || "",
-    updateDate: p.updateDate,
-    image: p.image || "/placeholder.png",
-    stock: typeof p.stock === "number" ? p.stock : 0,
-    category: p.category || "General",
-    raw: p,
+    code: p.code ?? "",
+    name: p.name ?? "",
+    image: p.image ?? p.imageUrl ?? "",
+    stock: Number(p.stock ?? 0),
+
+    costPrice: Number(p.costPrice ?? 0),
+    retailPrice: Number(p.retailPrice ?? 0),
+    wholesalePrice: Number(p.wholesalePrice ?? 0),
+
+    baseUnitId: Number(p.baseUnit ?? 2),
+    baseUnit: getUnitLabel(p.baseUnit),
+
+    categoryId: p.categoryId ?? null,
+    categoryName: p.categoryName ?? p.category ?? "Sin categoría",
+
+    isActived: p.isActived ?? true,
   };
 }
 
-/* Simple login (fallback) */
-export async function login(email, password) {
-  // Prefer real auth endpoint if exists; fallback to Users search
-  const users = await listUsers();
-  const user = (users || []).find(u => (u.email || u.Email || "").toLowerCase() === (email||"").toLowerCase());
-  if (!user) throw new Error("Usuario no encontrado");
-  // If password field exists and mismatch -> error
-  if (user.password && user.password !== password) throw new Error("Contraseña incorrecta");
-  const token = btoa(`${user.id}:${Date.now()}`);
-  localStorage.setItem("admin_token", token);
-  localStorage.setItem("admin_user", JSON.stringify(user));
-  return { token, user };
-}
-export function logout() {
-  localStorage.removeItem("admin_token");
-  localStorage.removeItem("admin_user");
+// =======================================
+// 📦 PRODUCTOS
+// =======================================
+export async function listProducts() {
+  const data = await request(`${API_URL}/Products`);
+  console.log("🔁 Productos desde API:", data);
+  return data.map(mapProduct);
 }
 
-export const api = {
-  listProducts, listProductsRaw, getProduct, getProductRaw, createProduct, updateProduct, deleteProduct,
-  listBranches, createBranch, updateBranch, deleteBranch,
-  listOrders, getOrder, updateOrder, createOrder,
-  listClients, listUsers,
-  login, logout
-};
+export async function getProduct(id) {
+  const p = await request(`${API_URL}/Products/${id}`);
+  return mapProduct(p);
+}
+
+export async function createProduct(body) {
+  // requiere token
+  return request(`${API_URL}/Products`, "POST", body, true);
+}
+
+export async function updateProduct(id, body) {
+  return request(`${API_URL}/Products/${id}`, "PUT", body, true);
+}
+
+export async function deleteProduct(id) {
+  return request(`${API_URL}/Products/${id}`, "DELETE", null, true);
+}
+
+// =======================================
+// 📂 CATEGORÍAS
+// =======================================
+export async function listCategories() {
+  return request(`${API_URL}/Categories`, "GET", null, true);
+}
+
+export async function createCategory(body) {
+  return request(`${API_URL}/Categories`, "POST", body, true);
+}
+
+export async function updateCategory(id, body) {
+  return request(`${API_URL}/Categories/${id}`, "PUT", body, true);
+}
+
+export async function deleteCategory(id) {
+  return request(`${API_URL}/Categories/${id}`, "DELETE", null, true);
+}
+
+// =======================================
+// 🏢 SUCURSALES
+// =======================================
+export async function listBranches() {
+  return request(`${API_URL}/Branches`, "GET", null, true);
+}
+
+export async function getBranch(id) {
+  return request(`${API_URL}/Branches/${id}`, "GET", null, true);
+}
+
+export async function createBranch(body) {
+  return request(`${API_URL}/Branches`, "POST", body, true);
+}
+
+export async function updateBranch(id, body) {
+  return request(`${API_URL}/Branches/${id}`, "PUT", body, true);
+}
+
+export async function deleteBranch(id) {
+  return request(`${API_URL}/Branches/${id}`, "DELETE", null, true);
+}
+
+// =======================================
+// 👥 CLIENTES
+// =======================================
+export async function listClients() {
+  return request(`${API_URL}/Clients`, "GET", null, true);
+}
+
+export async function getClient(id) {
+  return request(`${API_URL}/Clients/${id}`, "GET", null, true);
+}
+
+export async function createClient(body) {
+  return request(`${API_URL}/Clients`, "POST", body, true);
+}
+
+export async function updateClient(id, body) {
+  return request(`${API_URL}/Clients/${id}`, "PUT", body, true);
+}
+
+export async function deleteClient(id) {
+  return request(`${API_URL}/Clients/${id}`, "DELETE", null, true);
+}
+
+// =======================================
+// 🛒 ÓRDENES / VENTAS
+// =======================================
+export async function listOrders() {
+  return request(`${API_URL}/Sales`, "GET", null, true);
+}
+
+export async function getOrder(id) {
+  return request(`${API_URL}/Sales/${id}`, "GET", null, true);
+}
+
+export async function createOrder(body) {
+  return request(`${API_URL}/Sales`, "POST", body, true);
+}
+
+export async function updateOrder(id, body) {
+  return request(`${API_URL}/Sales/${id}`, "PUT", body, true);
+}
+
+// =======================================
+// 📊 DASHBOARD / ESTADÍSTICAS
+// =======================================
+export async function getTodayStats() {
+  return request(`${API_URL}/Sales/today`, "GET", null, true);
+}
+
+export async function getTotalStats() {
+  return request(`${API_URL}/Sales/total`, "GET", null, true);
+}
+
+export async function getMonthlyStats(year, month) {
+  return request(
+    `${API_URL}/Sales/period/${year}/${month}`,
+    "GET",
+    null,
+    true
+  );
+}
+
+export async function getSalesStatistics() {
+  return request(`${API_URL}/Sales/statistics`, "GET", null, true);
+}
+
+// =======================================
+// 🏢 STOCK POR PRODUCTO
+// =======================================
+export async function getProductStock(productId) {
+  // Devuelve lista de { branchId, branchName, quantity, lastUpdated }
+  return request(`${API_URL}/Products/${productId}/stock`, "GET", null, true);
+}
+
+export async function setProductStock(productId, body) {
+  // body: { branchId, productId, quantity }
+  return request(
+    `${API_URL}/Products/${productId}/stock/set`,
+    "POST",
+    body,
+    true
+  );
+}
+
+export async function addProductStock(productId, body) {
+  return request(
+    `${API_URL}/Products/${productId}/stock/add`,
+    "POST",
+    body,
+    true
+  );
+}

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getProduct } from "../admin/services/apiService";
 import { useCart } from "../context/CartContext";
-import { ShoppingCart, ArrowLeft, Package, Truck, Shield, Heart } from "lucide-react";
+import { ShoppingCart, ArrowLeft, Package, Truck, Shield } from "lucide-react";
+import producto1 from "../../public/images/producto1.jpg";
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -13,28 +14,27 @@ export default function ProductPage() {
   const { addToCart } = useCart();
   const navigate = useNavigate();
 
+  // ===============================
+  // CARGA DEL PRODUCTO DESDE API
+  // ===============================
   useEffect(() => {
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        const p = await getProduct(id);
+        const p = await getProduct(id); // viene normalizado por mapProduct()
         setProduct(p);
       } catch (e) {
-        console.error(e);
+        console.error("Error cargando producto:", e);
       } finally {
         setLoading(false);
       }
     };
-
     fetchProduct();
   }, [id]);
 
-  const handleAddToCart = () => {
-    addToCart(product, quantity);
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
-  };
-
+  // ===============================
+  // LOADING
+  // ===============================
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FDF7EF]">
@@ -46,6 +46,9 @@ export default function ProductPage() {
     );
   }
 
+  // ===============================
+  // PRODUCTO NO ENCONTRADO
+  // ===============================
   if (!product) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FDF7EF] px-4">
@@ -53,15 +56,14 @@ export default function ProductPage() {
           <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
             <Package size={48} className="text-gray-400" />
           </div>
+
           <h2 className="text-2xl font-bold text-[#1C1C1C] mb-4">
             Producto no encontrado
           </h2>
-          <p className="text-[#5A564E] mb-6">
-            El producto que buscas no existe o fue eliminado
-          </p>
+
           <Link
             to="/"
-            className="inline-block bg-[#F24C00] text-white px-8 py-3 rounded-xl font-bold hover:brightness-110 transition"
+            className="bg-[#F24C00] text-white px-6 py-3 rounded-xl font-bold"
           >
             Volver al inicio
           </Link>
@@ -70,9 +72,46 @@ export default function ProductPage() {
     );
   }
 
-  const isAvailable = product.isActived && product.stock > 0;
-  const price = product.retailPrice || product.precio || product.price || 0;
+  // ===============================
+  // CAMPOS NORMALIZADOS
+  // ===============================
+  const name = product.name || "Producto";
+  const price = Number(product.retailPrice ?? product.price ?? 0);
+  const stock = Number(product.stock ?? 0);
+  const category = product.categoryName || "Sin categoría";
 
+  // Sólo usamos el stock para disponibilidad (para evitar el bug)
+  const isAvailable = stock > 0;
+
+  // Imagen del backend o fallback
+  const finalImage =
+    product.image && product.image.trim() !== ""
+      ? product.image
+      : producto1;
+
+  // ===============================
+  // HANDLERS
+  // ===============================
+  const handleAddToCart = () => {
+    if (!product || !isAvailable) return;
+
+    const safeQty = Math.max(1, Math.min(quantity, stock || 1));
+    addToCart(product, safeQty);
+
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 1800);
+  };
+
+  const handleBuyNow = () => {
+    if (!product || !isAvailable) return;
+    const safeQty = Math.max(1, Math.min(quantity, stock || 1));
+    addToCart(product, safeQty);
+    navigate("/checkout");
+  };
+
+  // ===============================
+  // RENDER
+  // ===============================
   return (
     <div className="bg-[#FDF7EF] min-h-screen py-12">
       <div className="max-w-7xl mx-auto px-6">
@@ -80,81 +119,67 @@ export default function ProductPage() {
         <div className="mb-6">
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-[#5A564E] hover:text-[#F24C00] transition"
+            className="inline-flex items-center gap-2 text-[#5A564E] hover:text-[#F24C00]"
           >
             <ArrowLeft size={20} />
             <span>Volver a productos</span>
           </Link>
         </div>
 
-        {/* Grid principal */}
+        {/* MAIN GRID */}
         <div className="grid md:grid-cols-2 gap-12 bg-white rounded-2xl shadow-xl p-8">
-          {/* Imagen */}
-          <div className="relative">
-            <div className="sticky top-24">
-              <div className="relative overflow-hidden rounded-2xl bg-gray-100">
-                <img
-                  src={product.image || product.imagen || "/placeholder.png"}
-                  alt={product.name || product.nombre}
-                  className="w-full h-[500px] object-cover"
-                />
-                
-                {/* Badges */}
-                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                  {product.category && (
-                    <span className="bg-[#8BBF00] text-[#072000] px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-                      {product.category}
-                    </span>
-                  )}
-                  {!isAvailable && (
-                    <span className="bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-                      No disponible
-                    </span>
-                  )}
-                </div>
+          {/* IMAGEN */}
+          <div className="relative overflow-hidden rounded-2xl bg-gray-100">
+            <img
+              src={finalImage}
+              alt={name}
+              className="w-full h-[500px] object-cover"
+            />
 
-                {/* Wishlist button */}
-                <button className="absolute top-4 right-4 w-12 h-12 bg-white rounded-full flex items-center justify-center hover:bg-red-50 transition shadow-lg">
-                  <Heart size={24} className="text-red-500" />
-                </button>
-              </div>
+            <div className="absolute top-4 left-4 flex flex-col gap-2">
+              {category && (
+                <span className="bg-[#8BBF00] text-[#072000] px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                  {category}
+                </span>
+              )}
+
+              {!isAvailable && (
+                <span className="bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                  No disponible
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Información del producto */}
+          {/* INFORMACIÓN DEL PRODUCTO */}
           <div>
-            <h1 className="text-4xl font-extrabold text-[#1C1C1C] mb-4 leading-tight">
-              {product.name || product.nombre || "Producto"}
+            <h1 className="text-4xl font-extrabold text-[#1C1C1C] mb-4">
+              {name}
             </h1>
 
-            {/* Precio */}
-            <div className="mb-6">
-              <p className="text-5xl font-extrabold text-[#F24C00]">
-                ${price.toLocaleString("es-AR")}
-              </p>
-              <p className="text-sm text-[#5A564E] mt-1">
-                IVA incluido • Envío calculado al finalizar
-              </p>
-            </div>
+            <p className="text-5xl font-extrabold text-[#F24C00] mb-2">
+              ${price.toLocaleString("es-AR")}
+            </p>
 
-            {/* Stock */}
             <div className="mb-8">
-              {product.stock > 0 ? (
+              {isAvailable ? (
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <div className="w-3 h-3 bg-green-500 rounded-full" />
                   <span className="text-[#1C1C1C] font-semibold">
-                    En stock ({product.stock} disponibles)
+                    En stock ({stock})
                   </span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <span className="text-red-600 font-semibold">Sin stock</span>
+                  <div className="w-3 h-3 bg-red-500 rounded-full" />
+                  <span className="text-red-600 font-semibold">
+                    Sin stock
+                  </span>
                 </div>
               )}
             </div>
 
-            {/* Selector de cantidad */}
+            {/* Cantidad */}
             {isAvailable && (
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-[#1C1C1C] mb-3">
@@ -162,17 +187,25 @@ export default function ProductPage() {
                 </label>
                 <div className="flex items-center gap-4">
                   <button
+                    type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-12 h-12 rounded-xl border-2 border-gray-300 flex items-center justify-center hover:border-[#F24C00] transition font-bold text-xl"
+                    className="w-12 h-12 rounded-xl border-2 border-gray-300 flex items-center justify-center"
                   >
                     −
                   </button>
+
                   <span className="text-2xl font-bold w-16 text-center">
                     {quantity}
                   </span>
+
                   <button
-                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                    className="w-12 h-12 rounded-xl border-2 border-gray-300 flex items-center justify-center hover:border-[#F24C00] transition font-bold text-xl"
+                    type="button"
+                    onClick={() =>
+                      setQuantity((prev) =>
+                        Math.min(stock, prev + 1)
+                      )
+                    }
+                    className="w-12 h-12 rounded-xl border-2 border-gray-300 flex items-center justify-center"
                   >
                     +
                   </button>
@@ -180,12 +213,13 @@ export default function ProductPage() {
               </div>
             )}
 
-            {/* Botones de acción */}
+            {/* BOTONES */}
             <div className="space-y-3 mb-8">
               <button
+                type="button"
                 onClick={handleAddToCart}
                 disabled={!isAvailable}
-                className={`w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition shadow-lg ${
+                className={`w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 ${
                   !isAvailable
                     ? "bg-gray-300 cursor-not-allowed"
                     : addedToCart
@@ -198,12 +232,10 @@ export default function ProductPage() {
               </button>
 
               <button
-                onClick={() => {
-                  handleAddToCart();
-                  navigate("/checkout");
-                }}
+                type="button"
+                onClick={handleBuyNow}
                 disabled={!isAvailable}
-                className={`w-full py-4 rounded-xl font-bold border-2 transition ${
+                className={`w-full py-4 rounded-xl font-bold border-2 ${
                   !isAvailable
                     ? "border-gray-300 text-gray-400 cursor-not-allowed"
                     : "border-[#F24C00] text-[#F24C00] hover:bg-[#F24C00] hover:text-white"
@@ -213,41 +245,27 @@ export default function ProductPage() {
               </button>
             </div>
 
-            {/* Features */}
+            {/* FEATURES */}
             <div className="grid grid-cols-3 gap-4 py-6 border-y border-gray-200">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-[#FFE8D8] rounded-full flex items-center justify-center mx-auto mb-2">
-                  <Truck size={24} color="#F24C00" />
-                </div>
-                <p className="text-xs text-[#5A564E]">Envío rápido</p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-[#FFE8D8] rounded-full flex items-center justify-center mx-auto mb-2">
-                  <Shield size={24} color="#F24C00" />
-                </div>
-                <p className="text-xs text-[#5A564E]">Pago seguro</p>
-              </div>
-              <div className="text-center">
-                <div className="w-12 h-12 bg-[#FFE8D8] rounded-full flex items-center justify-center mx-auto mb-2">
-                  <Package size={24} color="#F24C00" />
-                </div>
-                <p className="text-xs text-[#5A564E]">Calidad garantizada</p>
-              </div>
-            </div>
-
-            {/* Descripción */}
-            <div className="mt-8">
-              <h3 className="text-xl font-bold text-[#1C1C1C] mb-4">
-                Descripción del producto
-              </h3>
-              <p className="text-[#5A564E] leading-relaxed">
-                {product.description ||
-                  "Producto natural de alta calidad, cuidadosamente seleccionado para tu bienestar y salud. Ideal para complementar una dieta equilibrada y un estilo de vida saludable."}
-              </p>
+              <Feature icon={Truck} text="Envío rápido" />
+              <Feature icon={Shield} text="Pago seguro" />
+              <Feature icon={Package} text="Calidad garantizada" />
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// FEATURE ICON
+function Feature({ icon: Icon, text }) {
+  return (
+    <div className="text-center">
+      <div className="w-12 h-12 bg-[#FFE8D8] rounded-full flex items-center justify-center mx-auto mb-2">
+        <Icon size={24} color="#F24C00" />
+      </div>
+      <p className="text-xs text-[#5A564E]">{text}</p>
     </div>
   );
 }

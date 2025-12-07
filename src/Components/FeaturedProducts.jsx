@@ -10,15 +10,15 @@ export default function FeaturedProducts() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const res = await listProducts();
-        setProducts(res || []);
+        const data = await listProducts();
+        setProducts(data);
       } catch (e) {
         console.error(e);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchProducts();
   }, []);
 
@@ -39,15 +39,17 @@ export default function FeaturedProducts() {
             Nuestros Productos
           </h2>
           <p className="text-lg text-[#5A564E]">
-            Explora nuestra amplia selección de productos naturales y saludables
+            Explora nuestra amplia selección de productos
           </p>
         </div>
 
         {products.length === 0 ? (
-          <p className="text-center text-[#5A564E]">No hay productos disponibles</p>
+          <p className="text-center text-[#5A564E]">
+            No hay productos disponibles
+          </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map(p => (
+            {products.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>
