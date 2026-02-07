@@ -102,7 +102,7 @@ async function request(url, method = "GET", body = null, auth = false) {
       const parsed = JSON.parse(text);
       return parsed;
     } catch (parseError) {
-      console.error("❌ Error parsing JSON response:", parseError, text);
+      // console.error("❌ Error parsing JSON response:", parseError, text);
       throw new Error("Respuesta del servidor en formato inválido");
     }
   } catch (error) {
@@ -331,7 +331,7 @@ export async function listProducts() {
     // Filtrar productos NO eliminados
     const activeProducts = mapped.filter(p => !p.isDeleted);
 
-    console.log(`📦 Productos totales: ${mapped.length}, Activos: ${activeProducts.length}`);
+  // console.log(`📦 Productos totales: ${mapped.length}, Activos: ${activeProducts.length}`);
     return activeProducts;
   } catch (error) {
     console.error("❌ Error en listProducts:", error.message);
@@ -537,7 +537,7 @@ export async function updateOrderStatus(id, status) {
 // 🛒 CHECKOUT PÚBLICO (WEB)
 // =======================================
 export async function createPublicSale(body) {
-  console.log("📤 createPublicSale - Datos recibidos:", body);
+  // console.log("📤 createPublicSale - Datos recibidos:", body);
 
   if (!body.customer || body.customer.trim() === "") {
     throw new Error("La dirección es requerida");
@@ -560,7 +560,7 @@ export async function createPublicSale(body) {
     externalData: body.externalData ?? null
   };
 
-  console.log("📦 createPublicSale - Payload final:", JSON.stringify(payload, null, 2));
+  // console.log("📦 createPublicSale - Payload final:", JSON.stringify(payload, null, 2));
 
   payload.items.forEach((item, i) => {
     if (isNaN(item.productId) || isNaN(item.quantity) || isNaN(item.unitPrice)) {
@@ -575,14 +575,14 @@ export async function createPublicSale(body) {
 
   try {
     const result = await request(`${API_URL}/Sales/public`, "POST", payload, false);
-    console.log("✅ createPublicSale - Venta creada:", result);
+    // console.log("✅ createPublicSale - Venta creada:", result);
     
     // ⭐ ENVIAR NOTIFICACIÓN DE WHATSAPP SI ESTÁ HABILITADA
     try {
       const settings = JSON.parse(localStorage.getItem('jovita_settings_v1') || '{}');
       
       if (settings.whatsappNewOrder) {
-        console.log("📱 Enviando notificación de WhatsApp...");
+        // console.log("📱 Enviando notificación de WhatsApp...");
         
         // Preparar datos para la notificación
         const notificationData = {
@@ -792,7 +792,7 @@ export function getFriendlyErrorMessage(error) {
  */
 export async function createPaywayCheckout(data) {
   try {
-    console.log("💳 Creando checkout Payway:", data);
+    // console.log("💳 Creando checkout Payway:", data);
 
     const payload = {
       saleId: Number(data.saleId),
@@ -808,7 +808,7 @@ export async function createPaywayCheckout(data) {
     };
 
     const result = await request(`${API_URL}/Payway/create-checkout`, "POST", payload, false);
-    console.log("✅ Checkout Payway creado:", result);
+    // console.log("✅ Checkout Payway creado:", result);
 
     // aceptar varios nombres comunes que pueda devolver el backend / provider
     const checkoutUrl =
@@ -841,10 +841,10 @@ export async function createPaywayCheckout(data) {
  */
 export async function getPaymentStatus(transactionId) {
   try {
-    console.log("🔍 Consultando estado del pago:", transactionId);
+    // console.log("🔍 Consultando estado del pago:", transactionId);
 
     const result = await request(`${API_URL}/Payway/payment-status/${transactionId}`, "GET", null, false);
-    console.log("📊 Estado del pago:", result);
+    // console.log("📊 Estado del pago:", result);
 
     if (!result) return null;
 
@@ -885,7 +885,7 @@ export async function getTransactionBySale(saleId) {
   let lastErr = null;
   for (const url of candidates) {
     try {
-      console.log("🔎 Intentando obtener transacción desde:", url);
+      // console.log("🔎 Intentando obtener transacción desde:", url);
       const res = await request(url, "GET", null, false);
       if (!res) continue;
 

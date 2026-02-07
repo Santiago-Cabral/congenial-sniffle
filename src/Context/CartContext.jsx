@@ -14,7 +14,7 @@ export function useCart() {
    🔥 NORMALIZACIÓN GLOBAL (UNIFICADA)
    ====================================================== */
 function normalizeProduct(p) {
-  console.log("🔍 Normalizando producto:", p);
+  // console.log("🔍 Normalizando producto:", p);
   
   // Imagen válida o fallback
   const img = p.image || p.imageUrl || p.img || "";
@@ -44,7 +44,7 @@ function normalizeProduct(p) {
     isActived: p.isActived === undefined ? true : p.isActived !== false,
   };
   
-  console.log("✅ Producto normalizado:", normalized);
+  // console.log("✅ Producto normalizado:", normalized);
   return normalized;
 }
 
@@ -64,14 +64,14 @@ export function CartProvider({ children }) {
   // Guardar cambios
   useEffect(() => {
     localStorage.setItem("cart_jovita", JSON.stringify(cart));
-    console.log("💾 Carrito guardado:", cart);
+    // console.log("💾 Carrito guardado:", cart);
   }, [cart]);
 
   /* ======================================================
      ➕ AGREGAR AL CARRITO
      ====================================================== */
   const addToCart = (rawProduct, qty = 1) => {
-    console.log("🛒 addToCart llamado con:", rawProduct, "qty:", qty);
+    // console.log("🛒 addToCart llamado con:", rawProduct, "qty:", qty);
     
     if (!rawProduct || !rawProduct.id) {
       console.error("❌ Producto inválido (sin id):", rawProduct);
@@ -94,20 +94,20 @@ export function CartProvider({ children }) {
       return;
     }
 
-    console.log("✅ Producto válido, agregando al carrito");
+    // console.log("✅ Producto válido, agregando al carrito");
 
     setCart((prev) => {
       const existing = prev.find((p) => p.id === product.id);
 
       if (existing) {
         const newQty = Math.min(existing.qty + qty, product.stock);
-        console.log(`📦 Actualizando cantidad de "${product.name}": ${existing.qty} → ${newQty}`);
+        // console.log(`📦 Actualizando cantidad de "${product.name}": ${existing.qty} → ${newQty}`);
         return prev.map((p) =>
           p.id === product.id ? { ...p, qty: newQty } : p
         );
       }
 
-      console.log(`✨ Agregando nuevo producto al carrito: "${product.name}"`);
+      // console.log(`✨ Agregando nuevo producto al carrito: "${product.name}"`);
       return [...prev, { ...product, qty: Math.min(qty, product.stock) }];
     });
   };
