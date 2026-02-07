@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getProduct } from "../admin/services/apiService";
-import { useCart } from "../context/CartContext";
+import { useCart } from "../Context/CartContext";
 import { ShoppingCart, ArrowLeft, Package, Truck, Shield } from "lucide-react";
-import producto1 from "../../public/images/producto1.jpg";
+import foto from "../../public/sin-foto.png";
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -87,7 +87,7 @@ export default function ProductPage() {
   const finalImage =
     product.image && product.image.trim() !== ""
       ? product.image
-      : producto1;
+      : foto;
 
   // ===============================
   // HANDLERS

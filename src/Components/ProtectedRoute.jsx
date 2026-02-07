@@ -8,3 +8,11 @@ export default function ProtectedAdminRoute({ children }) {
     ? children
     : <Navigate to="/admin/login" replace />;
 }
+function ProtectedUserRoute({ children }) {
+  const { isAuthenticated } = useUserAuth();
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  return children;
+}
+export { ProtectedUserRoute };

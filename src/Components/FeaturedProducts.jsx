@@ -1,26 +1,12 @@
-import { useEffect, useState } from "react";
-import { listProducts } from "../admin/services/apiService";
+import { useLocation, Link } from "react-router-dom";
+import { useProducts } from "../Context/ProductsContext"; // 👈 Importar el contexto
 import ProductCard from "./ProductCard";
 
 export default function FeaturedProducts() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        const data = await listProducts();
-        setProducts(data);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
+  const { products, loading } = useProducts(); // 👈 Usar el contexto
+  
+  const location = useLocation();
+  const categoryFilter = new URLSearchParams(location.search).get("category");
 
   if (loading) {
     return (
@@ -31,25 +17,24 @@ export default function FeaturedProducts() {
     );
   }
 
+  const filteredProducts = categoryFilter
+    ? products.filter((p) => p.categoryName?.toLowerCase() === categoryFilter.toLowerCase())
+    : products;
+
   return (
     <section id="productos" className="bg-white py-16">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-extrabold text-[#1C1C1C] mb-3">
-            Nuestros Productos
+        <div className="w-full text-center mb-12">
+          <h2 className="text-4xl font-extrabold text-[#1C1C1C]">
+            {categoryFilter ? `Productos en "${categoryFilter}"` : "Nuestros Productos"}
           </h2>
-          <p className="text-lg text-[#5A564E]">
-            Explora nuestra amplia selección de productos
-          </p>
         </div>
 
-        {products.length === 0 ? (
-          <p className="text-center text-[#5A564E]">
-            No hay productos disponibles
-          </p>
+        {filteredProducts.length === 0 ? (
+          <p className="text-center">No hay productos disponibles.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map((p) => (
+            {filteredProducts.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>

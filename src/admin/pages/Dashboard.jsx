@@ -1,15 +1,21 @@
-import { 
-  DollarSign, 
-  ShoppingCart, 
-  Package, 
-  Users, 
+import {
+  DollarSign,
+  ShoppingCart,
+  Package,
+  Users,
   TrendingUp,
   Clock,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
-import { listOrders, listProducts, listClients } from "../services/apiService";
+import {
+  listOrders,
+  listProducts,
+  listClients,
+  getProductStock,
+} from "../services/apiService";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -19,143 +25,137 @@ export default function Dashboard() {
     ordersChange: 0,
     totalProducts: 0,
     totalClients: 0,
-    clientsChange: 0
+    clientsChange: 0,
   });
 
   const [recentOrders, setRecentOrders] = useState([]);
   const [lowStock, setLowStock] = useState([]);
-  const [extra, setExtra] = useState({
-    topProducts: [],
-    dailySales: {}
-  });
-
   const [loading, setLoading] = useState(true);
+  const [serverWarning, setServerWarning] = useState(false);
 
+  // ===============================
+  // ⏱ Utils
+  // ===============================
+  const formatTime = (dateString) => {
+    if (!dateString) return "--:--";
+    const d = new Date(dateString);
+    return isNaN(d.getTime()) 
+      ? "--:--" 
+      : d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  // ===============================
+  // 🔄 Fetch Dashboard
+  // ===============================
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
+        // Pedimos todo en paralelo
         const [orders, products, clients] = await Promise.all([
           listOrders(),
           listProducts(),
-          listClients()
+          listClients(),
         ]);
+
+        // Si orders viene vacío pero products tiene datos, es posible que el server de ventas falló
+        // (Aunque también puede ser que simplemente no haya ventas)
+        if (orders.length === 0 && products.length > 0) {
+           // Opcional: Podrías poner una bandera aquí si quisieras distinguir "0 ventas" de "error 500"
+           // pero como el apiService ya hizo catch, lo tratamos como 0 ventas.
+        }
 
         const now = new Date();
         const month = now.getMonth();
         const year = now.getFullYear();
-
         const prevMonth = month === 0 ? 11 : month - 1;
         const prevMonthYear = month === 0 ? year - 1 : year;
 
-        // ==========================================
-        // 📌 1) VENTAS DEL MES
-        // ==========================================
+        // --- VENTAS ---
         const salesThisMonth = orders
-          .filter(o => {
+          .filter((o) => {
             const d = new Date(o.soldAt);
             return d.getMonth() === month && d.getFullYear() === year;
           })
           .reduce((acc, o) => acc + o.total, 0);
 
-        // Ventas del mes anterior
         const salesPrevMonth = orders
-          .filter(o => {
+          .filter((o) => {
             const d = new Date(o.soldAt);
             return d.getMonth() === prevMonth && d.getFullYear() === prevMonthYear;
           })
           .reduce((acc, o) => acc + o.total, 0);
 
-        const salesChange =
-          salesPrevMonth > 0
+        const salesChange = salesPrevMonth > 0
             ? (((salesThisMonth - salesPrevMonth) / salesPrevMonth) * 100).toFixed(1)
             : 100;
 
-        // ==========================================
-        // 📌 2) ORDENES
-        // ==========================================
-        const totalOrders = orders.length;
-
-        const ordersThisMonth = orders.filter(o => {
+        // --- ÓRDENES ---
+        const ordersThisMonth = orders.filter((o) => {
           const d = new Date(o.soldAt);
           return d.getMonth() === month && d.getFullYear() === year;
         });
 
-        const ordersPrevMonth = orders.filter(o => {
+        const ordersPrevMonth = orders.filter((o) => {
           const d = new Date(o.soldAt);
           return d.getMonth() === prevMonth && d.getFullYear() === prevMonthYear;
         });
 
-        const ordersChange =
-          ordersPrevMonth.length > 0
-            ? (((ordersThisMonth.length - ordersPrevMonth.length) /
-                ordersPrevMonth.length) *
-                100).toFixed(1)
+        const ordersChange = ordersPrevMonth.length > 0
+            ? (((ordersThisMonth.length - ordersPrevMonth.length) / ordersPrevMonth.length) * 100).toFixed(1)
             : 100;
 
-        // ==========================================
-        // 📌 3) PRODUCTOS
-        // ==========================================
-        const totalProducts = products.length;
-
-        // ==========================================
-        // 📌 4) CLIENTES
-        // ==========================================
-        const clientsThisMonth = clients.filter(c => {
-          const d = new Date(c.createdAt ?? now);
+        // --- CLIENTES ---
+        const clientsThisMonth = clients.filter((c) => {
+          const d = new Date(c.createdAt);
           return d.getMonth() === month && d.getFullYear() === year;
         });
 
-        const clientsPrevMonth = clients.filter(c => {
-          const d = new Date(c.createdAt ?? now);
+        const clientsPrevMonth = clients.filter((c) => {
+          const d = new Date(c.createdAt);
           return d.getMonth() === prevMonth && d.getFullYear() === prevMonthYear;
         });
 
-        const clientsChange =
-          clientsPrevMonth.length > 0
-            ? (((clientsThisMonth.length - clientsPrevMonth.length) /
-                clientsPrevMonth.length) *
-                100).toFixed(1)
+        const clientsChange = clientsPrevMonth.length > 0
+            ? (((clientsThisMonth.length - clientsPrevMonth.length) / clientsPrevMonth.length) * 100).toFixed(1)
             : 100;
 
-        // ==========================================
-        // 📌 5) TOP 5 PRODUCTOS MÁS VENDIDOS
-        // ==========================================
-        const productCount = {};
+        // --- STOCK ---
+        // Nota: Hacer esto para muchos productos puede ser lento.
+        // Lo ideal sería que el backend devuelva productos con stock ya calculado.
+        // Limitamos a los primeros 20 para no saturar si hay muchos
+        const productsToCheck = products.slice(0, 20); 
+        
+        const productsWithRealStock = await Promise.all(
+          productsToCheck.map(async (p) => {
+            try {
+              const stockList = await getProductStock(p.id);
+              const realStock = Array.isArray(stockList)
+                ? stockList.reduce((acc, s) => acc + Number(s.quantity || 0), 0)
+                : 0;
+              return { ...p, stock: realStock };
+            } catch {
+              return { ...p, stock: 0 };
+            }
+          })
+        );
 
-        orders.forEach(o => {
-          (o.items || []).forEach(i => {
-            if (!productCount[i.productName]) productCount[i.productName] = 0;
-            productCount[i.productName] += i.quantity;
-          });
-        });
+        setLowStock(
+          productsWithRealStock
+            .filter((p) => p.stock <= 10)
+            .sort((a, b) => a.stock - b.stock) // Ordenar por menor stock
+            .slice(0, 5)
+        );
 
-        const topProducts = Object.entries(productCount)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([name, qty]) => ({ name, qty }));
-
-        // ==========================================
-        // 📌 6) VENTAS POR DÍA (para gráficos)
-        // ==========================================
-        const dailySales = {};
-
-        orders.forEach(o => {
-          const key = new Date(o.soldAt).toISOString().split("T")[0];
-          if (!dailySales[key]) dailySales[key] = 0;
-          dailySales[key] += o.total;
-        });
-
-        // ==========================================
-        // 📌 SETEAR ESTADO
-        // ==========================================
+        // --- SET STATE ---
         setStats({
           salesThisMonth,
           salesChange,
-          totalOrders,
+          totalOrders: orders.length,
           ordersChange,
-          totalProducts,
+          totalProducts: products.length,
           totalClients: clients.length,
-          clientsChange
+          clientsChange,
         });
 
         setRecentOrders(
@@ -164,15 +164,9 @@ export default function Dashboard() {
             .slice(0, 5)
         );
 
-        setLowStock(products.filter(p => p.stock < 10).slice(0, 3));
-
-        setExtra({
-          topProducts,
-          dailySales
-        });
-
-      } catch (error) {
-        console.error("Error loading dashboard:", error);
+      } catch (e) {
+        console.error("Error cargando dashboard:", e);
+        setServerWarning(true);
       } finally {
         setLoading(false);
       }
@@ -181,185 +175,177 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  // --------------------------
-  // TARJETAS DE STATS
-  // --------------------------
-  const StatCard = ({ icon: Icon, title, value, change, color }) => (
-    <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition">
+  // ===============================
+  // 🧩 Stat Card Component
+  // ===============================
+  const StatCard = ({ icon: Icon, title, value, change, color, isMoney }) => (
+    <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition border border-gray-100">
       <div className="flex items-start justify-between mb-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color} shadow-sm`}>
           <Icon size={24} className="text-white" />
         </div>
-        <div className={`flex items-center gap-1 text-sm font-semibold ${
-          change > 0 ? "text-green-600" : "text-red-600"
-        }`}>
-          <TrendingUp size={16} />
-          <span>{change}%</span>
+        <div
+          className={`flex items-center gap-1 text-sm font-semibold ${
+            change >= 0 ? "text-green-600" : "text-red-600"
+          }`}
+        >
+          <TrendingUp size={16} className={change < 0 ? "rotate-180" : ""} />
+          <span>{Math.abs(change)}%</span>
         </div>
       </div>
-      <h3 className="text-[#5A564E] text-sm font-medium mb-1">{title}</h3>
-      <p className="text-3xl font-extrabold text-[#1C1C1C]">{value}</p>
-      <p className="text-xs text-[#5A564E] mt-2">vs mes anterior</p>
+      <h3 className="text-gray-500 text-sm mb-1 font-medium">{title}</h3>
+      <p className="text-3xl font-extrabold text-[#1C1C1C]">
+        {value}
+      </p>
+      <p className="text-xs text-gray-400 mt-2 font-medium">vs mes anterior</p>
     </div>
   );
 
-  // --------------------------
-  // LOADING
-  // --------------------------
+  // ===============================
+  // ⏳ Loading
+  // ===============================
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
+      <div className="flex justify-center items-center h-96">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#F24C00] border-t-transparent mb-4"></div>
-          <p className="text-[#5A564E]">Cargando dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#F24C00] border-t-transparent mb-4 mx-auto" />
+          <p className="text-[#5A564E] font-medium">Actualizando métricas...</p>
         </div>
       </div>
     );
   }
 
-  // --------------------------
-  // RENDER UI
-  // --------------------------
+  // ===============================
+  // 🧱 Render
+  // ===============================
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-8 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-extrabold text-[#1C1C1C] mb-2">Dashboard</h1>
-        <p className="text-[#5A564E]">Resumen general de tu negocio</p>
+        <h1 className="text-3xl font-extrabold text-[#1C1C1C] mb-2">
+          Dashboard
+        </h1>
+        <p className="text-[#5A564E]">Resumen general del negocio</p>
       </div>
+
+      {serverWarning && (
+        <div className="bg-orange-50 border-l-4 border-orange-500 p-4 flex gap-3">
+          <AlertTriangle className="text-orange-500"/>
+          <p className="text-orange-800 text-sm">Hubo un problema de conexión con algunos servicios. Los datos pueden estar incompletos.</p>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           icon={DollarSign}
           title="Ventas del Mes"
-          value={`$${stats.salesThisMonth.toLocaleString()}`}
-          change={stats.salesChange}
-          color="bg-green-500"
+          value={`$${stats.salesThisMonth.toLocaleString("es-AR")}`}
+          change={Number(stats.salesChange)}
+          color="bg-emerald-500"
+          isMoney
         />
         <StatCard
           icon={ShoppingCart}
           title="Órdenes Totales"
           value={stats.totalOrders}
-          change={stats.ordersChange}
+          change={Number(stats.ordersChange)}
           color="bg-blue-500"
         />
         <StatCard
           icon={Package}
-          title="Productos"
+          title="Productos Activos"
           value={stats.totalProducts}
-          change={3}
+          change={0} // No calculamos histórico de productos
           color="bg-[#F24C00]"
         />
         <StatCard
           icon={Users}
-          title="Clientes"
+          title="Clientes Registrados"
           value={stats.totalClients}
-          change={stats.clientsChange}
+          change={Number(stats.clientsChange)}
           color="bg-purple-500"
         />
       </div>
 
-      {/* Content Grid */}
+      {/* Grilla Inferior */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Recent Orders */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <Clock size={24} color="#F24C00" />
-              <h2 className="text-xl font-bold text-[#1C1C1C]">
-                Órdenes Recientes
-              </h2>
-            </div>
-            <a href="/admin/ordenes" className="text-[#F24C00] font-semibold hover:underline">
-              Ver todas
-            </a>
+        {/* Órdenes recientes */}
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <div className="flex items-center gap-3 mb-6">
+            <Clock size={24} className="text-[#F24C00]" />
+            <h2 className="text-xl font-bold text-gray-800">Órdenes Recientes</h2>
           </div>
 
-          <div className="space-y-4">
-            {recentOrders.length === 0 ? (
-              <p className="text-center text-[#5A564E] py-8">
-                No hay órdenes recientes
-              </p>
-            ) : (
-              recentOrders.map((order, idx) => (
+          {recentOrders.length === 0 ? (
+            <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+               <ShoppingCart className="mx-auto text-gray-300 mb-2" size={32} />
+               <p className="text-gray-500">No hay órdenes registradas recientemente.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentOrders.map((o) => (
                 <div
-                  key={idx}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition"
+                  key={o.id}
+                  className="flex items-center justify-between p-4 bg-gray-50 hover:bg-white hover:shadow-md border border-transparent hover:border-gray-100 transition rounded-xl"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <span className="font-bold text-blue-600">
-                        #{order.id}
-                      </span>
+                    <div className="bg-[#F24C00] bg-opacity-10 w-10 h-10 rounded-full flex items-center justify-center text-[#F24C00] font-bold text-xs">
+                        #{o.id}
                     </div>
                     <div>
-                      <p className="font-semibold text-[#1C1C1C]">
-                        {order.clientName || "Cliente"}
+                      <p className="font-bold text-gray-800">{o.clientName || "Cliente"}</p>
+                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                         {formatTime(o.soldAt)} • {o.status}
                       </p>
-                      <p className="text-sm text-[#5A564E]">Hace 2 horas</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-[#1C1C1C]">
-                      ${order.total.toLocaleString()}
-                    </p>
-                    <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                      Completado
-                    </span>
-                  </div>
+                  <p className="font-bold text-[#F24C00]">
+                    ${o.total.toLocaleString("es-AR")}
+                  </p>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Low Stock */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+        {/* Bajo stock */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center gap-3 mb-6">
-            <AlertCircle size={24} color="#F24C00" />
-            <h2 className="text-xl font-bold text-[#1C1C1C]">
-              Productos con Bajo Stock
-            </h2>
+            <AlertCircle size={24} className="text-[#F24C00]" />
+            <h2 className="text-xl font-bold text-gray-800">Alerta Stock</h2>
           </div>
 
-          <div className="space-y-4">
-            {lowStock.length === 0 ? (
-              <p className="text-center text-[#5A564E] py-8">
-                Todo en stock
-              </p>
-            ) : (
-              lowStock.map(product => (
+          {lowStock.length === 0 ? (
+            <div className="text-center py-10 bg-green-50 rounded-xl border border-green-100">
+                <p className="text-green-700 font-medium">Todo el inventario OK ✅</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {lowStock.map((p) => (
                 <div
-                  key={product.id}
-                  className="p-4 bg-orange-50 rounded-xl border border-orange-200"
+                  key={p.id}
+                  className="p-4 bg-orange-50 border border-orange-100 rounded-xl flex justify-between items-center"
                 >
-                  <p className="font-bold text-[#1C1C1C] mb-1">
-                    {product.name}
-                  </p>
-                  <p className="text-sm text-[#5A564E] mb-2">
-                    {product.category}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-orange-600 font-bold">
-                      {product.stock} unidades
-                    </span>
-                    <a
-                      href={`/admin/productos`}
-                      className="text-[#F24C00] text-sm font-semibold hover:underline"
-                    >
-                      Reabastecer
-                    </a>
+                  <div>
+                      <p className="font-bold text-gray-800 text-sm line-clamp-1">{p.name}</p>
+                      <p className="text-xs text-orange-600 mt-1">
+                        {p.categoryName || "General"}
+                      </p>
+                  </div>
+                  <div className="text-right">
+                      <span className="block text-xl font-bold text-orange-600 leading-none">
+                        {p.stock}
+                      </span>
+                      <span className="text-[10px] text-orange-400 uppercase font-bold">Unid.</span>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-
-          <button className="w-full mt-4 py-3 border-2 border-gray-200 rounded-xl font-semibold hover:bg-gray-50 transition">
-            Ver inventario completo
-          </button>
+              ))}
+              <a href="/admin/productos" className="block text-center text-sm text-[#F24C00] font-semibold mt-4 hover:underline">
+                  Ver inventario completo
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </div>

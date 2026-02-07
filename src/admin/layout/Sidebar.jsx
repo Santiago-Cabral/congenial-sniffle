@@ -5,7 +5,8 @@ import {
   ShoppingCart, 
   Users, 
   Settings, 
-  LogOut 
+  LogOut, 
+  Building2
 } from "lucide-react";
 
 const menuItems = [
@@ -13,6 +14,7 @@ const menuItems = [
   { path: "/admin/productos", icon: Package, label: "Productos" },
   { path: "/admin/ordenes", icon: ShoppingCart, label: "Órdenes" },
   { path: "/admin/clientes", icon: Users, label: "Clientes" },
+  { path: "/admin/sucursales", icon: Building2, label: "Sucursales" },
   { path: "/admin/configuracion", icon: Settings, label: "Configuración" }
 ];
 
