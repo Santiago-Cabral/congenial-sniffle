@@ -20,30 +20,11 @@ import UserLoginPage from "./pages/UserLoginPage.jsx";
 import PerfilPage from "./pages/PerfilPage";
 import { useUserAuth } from "./Context/UserAuthContext";
 
-// Rutas nuevas
 import Error404 from "./pages/Error404";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 
-// 🟩 PROTECCIÓN DE RUTA PARA ADMIN
-function ProtectedAdminRoute({ children }) {
-  const user = JSON.parse(localStorage.getItem("user"));
-
-  if (!user) return <Navigate to="/admin/login" replace />;
-
-  const role = user.role?.toLowerCase?.() || "";
-
-  const isAdmin =
-    role.includes("admin") ||
-    role.includes("administrador") ||
-    role.includes("administrador/a");
-
-  if (!isAdmin) return <Navigate to="/admin/login" replace />;
-
-  return children;
-}
-
-// 🟦 PROTECCIÓN DE RUTA PARA USUARIO NORMAL
+// 🟦 PROTECCIÓN DE RUTA PARA USUARIO NORMAL (mantener)
 function ProtectedClientRoute({ children }) {
   const { isAuthenticated } = useUserAuth();
 
@@ -56,12 +37,10 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const location = useLocation();
 
-  // Detectar si estamos en la sección admin
   const isAdminRoute = location.pathname.startsWith("/admin");
 
   return (
     <>
-      {/* NAVBAR Y CARRITO SIEMPRE VISIBLES (también en admin, si querés luego lo cambiamos) */}
       <Navbar onOpenCart={() => setCartOpen(true)} />
       <CartSidebar open={cartOpen} onClose={() => setCartOpen(false)} />
 
@@ -89,10 +68,8 @@ export default function App() {
           <Route path="/products" element={<FeaturedProducts />} />
           <Route path="/allproductos" element={<AllProducts />} />
 
-        {/*Alias para compatibilidad con los returnUrl/cancelUrl que generás en CheckoutForm*/}
-<Route path="/payment/success" element={<PaymentSuccess />} />
-<Route path="/payment/cancel" element={<PaymentCancel />} />
-
+          <Route path="/payment/success" element={<PaymentSuccess />} />
+          <Route path="/payment/cancel" element={<PaymentCancel />} />
 
           {/* LOGIN USUARIO NORMAL */}
           <Route path="/login" element={<UserLoginPage />} />
@@ -107,25 +84,15 @@ export default function App() {
             }
           />
 
-          {/* RUTAS ADMIN PROTEGIDAS */}
-          <Route
-            path="/admin/*"
-            element={
-              <ProtectedAdminRoute>
-                <AdminApp />
-              </ProtectedAdminRoute>
-            }
-          />
+          {/* ✅ TODAS LAS RUTAS ADMIN (SIN PROTECCIÓN AQUÍ) 
+              La protección está dentro de AdminApp.jsx */}
+          <Route path="/admin/*" element={<AdminApp />} />
 
-          {/* RUTA 404 EXPLÍCITA (opcional) */}
           <Route path="/404" element={<Error404 />} />
-
-          {/* CUALQUIER OTRA RUTA → 404 */}
           <Route path="*" element={<Error404 />} />
         </Routes>
       </main>
 
-      {/* FOOTER Y WHATSAPP SOLO EN LA PARTE PÚBLICA */}
       {!isAdminRoute && <Footer />}
       {!isAdminRoute && <WhatsAppAssistant />}
     </>
