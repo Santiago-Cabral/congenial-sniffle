@@ -30,9 +30,6 @@ export default function HeroSlider() {
   const intervalRef = useRef(null);
   const touchStartX = useRef(null);
 
-  /* ==============================
-     AUTOPLAY
-  ============================== */
   useEffect(() => {
     startAutoplay();
     return stopAutoplay;
@@ -50,17 +47,11 @@ export default function HeroSlider() {
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
-  /* ==============================
-     CONTROLES
-  ============================== */
   const next = () => setCurrent((prev) => (prev + 1) % slides.length);
 
   const prev = () =>
     setCurrent((prev) => (prev - 1 + slides.length) % slides.length);
 
-  /* ==============================
-     SWIPE MOBILE
-  ============================== */
   const onTouchStart = (e) => {
     stopAutoplay();
     touchStartX.current = e.touches[0].clientX;
@@ -82,8 +73,7 @@ export default function HeroSlider() {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* SLIDER */}
-      <div className="relative h-[450px] sm:h-[500px] md:h-[600px] lg:h-[650px]">
+      <div className="relative h-[500px] md:h-[600px] lg:h-[650px]">
         {slides.map((slide, index) => (
           <div
             key={index}
@@ -96,61 +86,58 @@ export default function HeroSlider() {
               backgroundPosition: "center",
             }}
           >
-            {/* OVERLAY - Más oscuro en móvil para mejor legibilidad */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-black/30 md:from-black/65 md:via-black/35 md:to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
           </div>
         ))}
 
-        {/* CONTENIDO */}
-        <div className="relative z-20 h-full max-w-7xl mx-auto px-4 sm:px-6 md:px-12 lg:px-16 flex items-center">
-          <div className="max-w-2xl text-white w-full">
-            {/* Título responsivo */}
-            <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-extrabold leading-tight drop-shadow-lg">
-              {slides[current].title}
-            </h1>
+        <div className="relative z-20 h-full flex items-center">
+          <div className="w-full max-w-7xl mx-auto px-6 md:px-16">
+            <div className="max-w-2xl text-white">
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold leading-tight drop-shadow-lg">
+                {slides[current].title}
+              </h1>
 
-            {/* Subtítulo responsivo */}
-            <p className="mt-3 md:mt-4 text-sm sm:text-base md:text-lg lg:text-xl text-white/90 drop-shadow-md">
-              {slides[current].subtitle}
-            </p>
+              <p className="mt-3 md:mt-4 text-base md:text-xl text-white/90 drop-shadow-md">
+                {slides[current].subtitle}
+              </p>
 
-            {/* Botón CTA responsivo */}
-            <a
-              href={slides[current].href}
-              className="inline-block mt-6 md:mt-8 bg-[#F24C00] px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 text-sm sm:text-base md:text-lg rounded-lg md:rounded-xl font-bold shadow-lg hover:brightness-110 transition-all active:scale-95"
-            >
-              {slides[current].cta}
-            </a>
+              <a
+                href={slides[current].href}
+                className="inline-block mt-6 md:mt-8 bg-[#F24C00] px-6 md:px-8 py-3 md:py-4 text-base md:text-lg rounded-xl font-bold shadow-lg hover:brightness-110 transition-all active:scale-95"
+              >
+                {slides[current].cta}
+              </a>
+            </div>
           </div>
         </div>
 
-        {/* FLECHAS - Más pequeñas y mejor posicionadas en móvil */}
+        {/* Flechas solo en desktop */}
         <button
           onClick={prev}
-          className="absolute left-2 sm:left-3 md:left-4 top-1/2 -translate-y-1/2 z-30 bg-white/90 p-2 sm:p-2.5 md:p-3 rounded-full shadow-lg hover:scale-105 active:scale-95 transition"
+          className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-30 bg-white/90 p-3 rounded-full shadow-lg hover:scale-105 transition items-center justify-center"
           aria-label="Anterior"
         >
-          <ChevronLeft size={18} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
+          <ChevronLeft size={24} />
         </button>
 
         <button
           onClick={next}
-          className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 z-30 bg-white/90 p-2 sm:p-2.5 md:p-3 rounded-full shadow-lg hover:scale-105 active:scale-95 transition"
+          className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-30 bg-white/90 p-3 rounded-full shadow-lg hover:scale-105 transition items-center justify-center"
           aria-label="Siguiente"
         >
-          <ChevronRight size={18} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
+          <ChevronRight size={24} />
         </button>
 
-        {/* INDICADORES - Más pequeños y mejor espaciados en móvil */}
-        <div className="absolute bottom-4 sm:bottom-5 md:bottom-6 left-1/2 -translate-x-1/2 flex gap-2 md:gap-3 z-30">
+        {/* Indicadores */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 z-30">
           {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrent(i)}
-              className={`h-2 md:h-3 rounded-full transition-all ${
+              className={`h-2.5 rounded-full transition-all ${
                 i === current
-                  ? "w-8 md:w-10 bg-[#F24C00]"
-                  : "w-2 md:w-3 bg-white/60"
+                  ? "w-10 bg-[#F24C00]"
+                  : "w-2.5 bg-white/60 hover:bg-white/80"
               }`}
               aria-label={`Slide ${i + 1}`}
             />
