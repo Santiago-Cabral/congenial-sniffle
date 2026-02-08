@@ -8,7 +8,7 @@ import CategoriesSection from "./Components/CategoriesSection";
 import FeaturesRow from "./Components/FeaturesRow";
 import FeaturedProducts from "./Components/FeaturedProducts";
 import AboutSection from "./Components/AboutSection";
-import Footer from "./components/Footer";
+import Footer from "./Components/Footer";
 import CartSidebar from "./Components/CartSidebar";
 import ProductPage from "./pages/Product";
 import AllProducts from "../src/Components/AllProducts.jsx";
