@@ -16,10 +16,10 @@ export default function WhatsAppAssistant() {
   ]);
   const [input, setInput] = useState("");
 
-  const phone = "5493814669135";
+  const phone = "+5493814669136";
 
   const IA_RESPONSES = [
-    { keywords: ["horario", "abren", "cierran"], answer: "Nuestro horario es de 9 a 21 hs, lunes a sábado." },
+    { keywords: ["horario", "abren", "cierran, abre"], answer: "Nuestro horario es de 9 a 21 hs, lunes a sábado." },
     { keywords: ["envio", "entrega"], answer: "Realizamos envíos en la zona. ¿Cuál es tu dirección?" },
     { keywords: ["ubicacion", "direccion"], answer: "Estamos en Aragon 32, Yerba Buena" }
   ];

@@ -138,8 +138,19 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-gray-300 mt-8 pt-6 text-center">
-          <p className="text-[#5A564E] text-sm">
+          <p className="text-[#5A564E] text-sm mb-2">
             © {new Date().getFullYear()} {displayStoreName}. Todos los derechos reservados.
+          </p>
+          <p className="text-[#5A564E] text-sm">
+            Desarrollado por{" "}
+            <a 
+              href="https://sc-softwares.vercel.app/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-[#F24C00] hover:text-[#F24C00] font-semibold transition"
+            >
+              SC software
+            </a>
           </p>
         </div>
       </div>
