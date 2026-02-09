@@ -14,8 +14,8 @@ const defaultSettings = {
   // ===============================
   storeName: "Forrajeria Jovita",
   email: "contacto@forrajeriajovita.com",
-  phone: "+54 9 11 1234-5678",
-  address: "Villa Carmela, Buenos Aires",
+  phone: "+54 9 3814669136",
+  address: "Aragón 32, Yerba Buena, Tucumán",
   description: "Tu dietética de confianza con productos naturales y saludables",
 
   // ===============================
