@@ -15,7 +15,7 @@ const defaultSettings = {
   storeName: "Forrajeria Jovita",
   email: "contacto@forrajeriajovita.com",
   phone: "+54 9 3814669136",
-  address: "Aragón 32, Yerba Buena, Tucumán",
+  address: "Aragón 34, Yerba Buena, Tucumán",
   description: "Tu dietética de confianza con productos naturales y saludables",
 
   // ===============================
@@ -26,7 +26,7 @@ const defaultSettings = {
   // ===============================
   // 🚚 ENVÍOS
   // ===============================
-  freeShipping: true,
+  freeShipping: false,
   freeShippingMinimum: 5000,
   shippingCost: 1500,
   deliveryTime: "24-48 horas",
