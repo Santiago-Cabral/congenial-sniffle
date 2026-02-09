@@ -36,7 +36,7 @@ export default function Footer() {
   const displayStoreName = storeName || "Forrajeria Jovita";
   const displayPhone = phone || "+54 9 3814669136";
   const displayEmail = email || "info@forrajeriajovita.com";
-  const displayAddress = address || "Aragón 32 Yerba Buena , Argentina";
+  const displayAddress = address || "Aragón 32 Yerba Buena, Argentina";
 
   const telHref = `tel:${String(displayPhone).replace(/[^+\d]/g, "")}`;
   const mailtoHref = `mailto:${displayEmail}`;
