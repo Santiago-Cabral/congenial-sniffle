@@ -34,7 +34,7 @@ export default function Footer() {
   } = settings;
 
   const displayStoreName = storeName || "Forrajeria Jovita";
-  const displayPhone = phone || "+54 9 3814669135";
+  const displayPhone = phone || "+54 9 3814669136";
   const displayEmail = email || "info@forrajeriajovita.com";
   const displayAddress = address || "Aragón 32 Yerba Buena , Argentina";
 

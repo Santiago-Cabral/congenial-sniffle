@@ -113,7 +113,7 @@ export default function CheckoutForm({ onClose }) {
         throw new Error("Ingresá un email válido para el pago con tarjeta");
       }
 
-      console.log("💳 [PAYWAY] Iniciando flujo de pago con tarjeta...");
+      // console.log("💳 [PAYWAY] Iniciando flujo de pago con tarjeta...");
 
       const payload = buildPayload();
       const sale = await createPublicSale(payload);
@@ -121,7 +121,7 @@ export default function CheckoutForm({ onClose }) {
       const saleId = sale?.id ?? sale?.Id ?? sale?.saleId ?? null;
       const totalAmount = Number(sale?.total ?? sale?.Total ?? sale?.amount ?? 0);
 
-      console.log("✅ [PAYWAY] Venta creada:", { saleId, totalAmount });
+      // console.log("✅ [PAYWAY] Venta creada:", { saleId, totalAmount });
 
       if (!saleId || totalAmount <= 0) {
         throw new Error("Error al crear la venta. Intente nuevamente.");
@@ -137,11 +137,11 @@ export default function CheckoutForm({ onClose }) {
         }
       };
 
-      console.log("📦 [PAYWAY] Solicitando checkout:", paywayData);
+      // console.log("📦 [PAYWAY] Solicitando checkout:", paywayData);
 
       const checkout = await createPaywayCheckout(paywayData);
 
-      console.log("✅ [PAYWAY] Checkout recibido:", checkout);
+      // console.log("✅ [PAYWAY] Checkout recibido:", checkout);
 
       if (checkout?.transactionId) {
         sessionStorage.setItem("payway_tx_id", checkout.transactionId);

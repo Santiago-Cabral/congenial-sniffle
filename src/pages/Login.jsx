@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Lock, Mail, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { login as loginService } from "../admin/services/apiService";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,8 +15,7 @@ export default function Login() {
     setErr("");
 
     try {
-      const { login } = await import("../admin/services/apiService");
-      const data = await login(email, password);
+      const data = await loginService(email, password);
 
       const token = data.Token || data.token;
       const rawRole = data.Role || data.role || "";
@@ -73,7 +73,6 @@ export default function Login() {
           )}
 
           <form onSubmit={submit} className="space-y-5">
-            {/* EMAIL */}
             <div>
               <label
                 htmlFor="email"
@@ -98,7 +97,6 @@ export default function Login() {
               </div>
             </div>
 
-            {/* PASSWORD */}
             <div>
               <label
                 htmlFor="password"
