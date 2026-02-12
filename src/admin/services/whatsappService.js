@@ -1,6 +1,6 @@
 // src/admin/services/whatsappService.js
 
-const WHATSAPP_NUMBER = "5493815502176"; // Formato internacional (Argentina: 549 + código de área sin 0 + número)
+const WHATSAPP_NUMBER = "+5493814669135"; // Formato internacional (Argentina: 549 + código de área sin 0 + número)
 
 /**
  * Genera un enlace de WhatsApp con un mensaje pre-escrito

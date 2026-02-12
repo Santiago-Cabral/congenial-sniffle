@@ -549,6 +549,8 @@ export async function createPublicSale(body) {
 
   const payload = {
     customer: String(body.customer).trim(),
+    email: body.email || null,
+    phone: body.phone || null,
     items: body.items.map((it) => ({
       productId: Number(it.productId),
       quantity: Number(it.quantity),
@@ -557,6 +559,7 @@ export async function createPublicSale(body) {
     shippingCost: Number(body.shippingCost || 0),
     paymentMethod: String(body.paymentMethod || "transfer").toLowerCase(),
     paymentReference: String(body.paymentReference || "Pedido Web"),
+    fulfillmentMethod: String(body.fulfillmentMethod || "delivery").toLowerCase(), // ✅ AGREGADO
     externalData: body.externalData ?? null
   };
 
@@ -579,35 +582,32 @@ export async function createPublicSale(body) {
     
     // ⭐ ENVIAR NOTIFICACIÓN DE WHATSAPP SI ESTÁ HABILITADA
     try {
-      const settings = JSON.parse(localStorage.getItem('jovita_settings_v1') || '{}');
+      const settings = JSON.parse(localStorage.getItem('jovita_settings_cache') || '{}');
       
       if (settings.whatsappNewOrder) {
         // console.log("📱 Enviando notificación de WhatsApp...");
         
-        // Preparar datos para la notificación
         const notificationData = {
           id: result.id || result.Id,
           customer: payload.customer,
-          items: body.items, // Usar los items originales que tienen más info
+          items: body.items,
           total: result.total || result.Total,
           shippingCost: payload.shippingCost,
           paymentMethod: payload.paymentMethod,
-          fulfillmentMethod: body.fulfillmentMethod || 'delivery',
+          fulfillmentMethod: payload.fulfillmentMethod, // ✅ AGREGADO
           customerDetails: body.customerDetails || {
             name: payload.customer,
-            phone: '',
-            email: '',
+            phone: payload.phone || '',
+            email: payload.email || '',
             address: ''
           }
         };
 
-        // Enviar notificación después de un pequeño delay
         setTimeout(() => {
           sendNewOrderNotification(notificationData);
         }, 1000);
       }
     } catch (notifError) {
-      // No fallar la venta si la notificación falla
       console.error("⚠️ Error al enviar notificación (no crítico):", notifError);
     }
     
@@ -617,7 +617,6 @@ export async function createPublicSale(body) {
     throw error;
   }
 }
-
 // =======================================
 // 📊 ESTADÍSTICAS
 // =======================================

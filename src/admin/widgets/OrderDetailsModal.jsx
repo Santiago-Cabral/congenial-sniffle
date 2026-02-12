@@ -57,10 +57,14 @@ function getPaymentMethodLabel(method) {
 }
 
 function getFulfillmentMethodLabel(method) {
-  if (!method) return "No especificado";
-  const normalized = String(method).toLowerCase();
+  if (method === null || method === undefined) return "No especificado";
+  // aceptar string o número
+  const normalized = String(method).toLowerCase().trim();
   if (normalized === "pickup" || normalized === "retiro") return "🛍️ Retiro en local";
   if (normalized === "delivery" || normalized === "envio" || normalized === "envío") return "🚚 Envío a domicilio";
+  // manejar códigos numéricos comunes: 1=delivery, 2=pickup
+  if (normalized === "1") return "🚚 Envío a domicilio";
+  if (normalized === "2") return "🛍️ Retiro en local";
   return method;
 }
 
@@ -208,7 +212,21 @@ export default function OrderDetailsModal({ order, onClose, onStatusChange, onDe
   const customerEmail = customer.email || "";
   const customerAddress = customer.address || "";
 
-  const fulfillmentMethod = order.fulfillmentMethod || order.deliveryType || "delivery";
+  // Normalizar fulfillmentMethod: prioriza fulfillmentMethod (string), acepta números o deliveryType como fallback
+  const fulfillmentMethod = (() => {
+    const fm = order?.fulfillmentMethod;
+    if (typeof fm === "string" && fm.trim() !== "") return fm.toLowerCase();
+    if (typeof fm === "number") return fm === 2 ? "pickup" : "delivery";
+    // deliveryType fallback (número o string)
+    const dt = order?.deliveryType;
+    if (typeof dt === "number") return dt === 2 ? "pickup" : "delivery";
+    if (typeof dt === "string" && /^\d+$/.test(dt)) {
+      const num = Number(dt);
+      return num === 2 ? "pickup" : "delivery";
+    }
+    return "delivery";
+  })();
+
   const paymentMethod = order.paymentMethod || order.paymentType || "";
   const shippingCost = Number(order.shippingCost || order.DeliveryCost || order.deliveryCost || 0);
   const subtotal = Number(order.total || order.Total || 0) - shippingCost;
