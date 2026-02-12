@@ -925,7 +925,6 @@ export async function getSettings() {
     return data;
   } catch (error) {
     console.error("❌ Error en getSettings:", error.message);
-    // Retornar defaults si falla
     return getDefaultSettings();
   }
 }
