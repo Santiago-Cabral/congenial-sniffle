@@ -1,83 +1,32 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback
-} from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { getSettings, updateSettings as apiUpdateSettings } from "../admin/services/apiService";
 
-const STORAGE_KEY = "jovita_settings_v1";
+const CACHE_KEY = "jovita_settings_cache";
 
 const defaultSettings = {
-  // ===============================
-  // 🏪 TIENDA
-  // ===============================
   storeName: "Forrajeria Jovita",
   email: "contacto@forrajeriajovita.com",
-  phone: "+54 9 3814669136",
-  address: "Aragón 34, Yerba Buena, Tucumán",
+  phone: "+54 9 3814669135",
+  address: "Aragón 32 Yerba Buena, Argentina",
   description: "Tu dietética de confianza con productos naturales y saludables",
-
-  // ===============================
-  // 📍 UBICACIÓN DEL LOCAL
-  // ===============================
   storeLocation: "Yerba Buena, Tucumán",
-
-  // ===============================
-  // 🚚 ENVÍOS
-  // ===============================
-  freeShipping: false,
+  freeShipping: true,
   freeShippingMinimum: 5000,
   shippingCost: 1500,
   deliveryTime: "24-48 horas",
-
-  /**
-   * 🔹 Zonas de envío por localidad/barrio
-   * Cada zona tiene un precio y una lista de localidades/barrios
-   * { id: number, price: number, label: string, localities: string[] }
-   */
   shippingZones: [
-    { 
-      id: 1, 
-      price: 800, 
-      label: "Zona 1 - $800",
-      localities: ["yerba buena", "san pablo", "el portal"]
-    },
-    { 
-      id: 2, 
-      price: 1200, 
-      label: "Zona 2 - $1200",
-      localities: ["san miguel de tucumán", "san miguel", "centro", "tucumán", "villa carmela", "barrio norte"]
-    },
-    { 
-      id: 3, 
-      price: 1800, 
-      label: "Zona 3 - $1800",
-      localities: ["tafí viejo", "tafi viejo", "banda del río salí", "alderetes", "las talitas"]
-    }
+    { id: 1, price: 800, label: "Zona 1 - $800", localities: ["yerba buena", "san pablo", "el portal"] },
+    { id: 2, price: 1200, label: "Zona 2 - $1200", localities: ["san miguel de tucumán", "san miguel", "centro", "tucumán", "villa carmela", "barrio norte"] },
+    { id: 3, price: 1800, label: "Zona 3 - $1800", localities: ["tafí viejo", "tafi viejo", "banda del río salí", "alderetes", "las talitas"] }
   ],
-
-  // Precio por defecto para localidades no encontradas
   defaultShippingPrice: 2500,
-
-  // ===============================
-  // 💳 PAGOS
-  // ===============================
   cash: true,
   bankTransfer: true,
   cards: true,
-
-  // ===============================
-  // 🏦 DATOS BANCARIOS
-  // ===============================
   bankName: "Banco Macro",
   accountHolder: "Forrajeria Jovita S.R.L.",
   cbu: "0000003100010000000001",
   alias: "JOVITA.DIETETICA",
-
-  // ===============================
-  // 🔔 NOTIFICACIONES
-  // ===============================
   emailNewOrder: true,
   emailLowStock: true,
   whatsappNewOrder: false,
@@ -87,41 +36,64 @@ const defaultSettings = {
 const SettingsContext = createContext(null);
 
 export function SettingsProvider({ children }) {
-  const [settings, setSettings] = useState(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return defaultSettings;
-      const saved = JSON.parse(raw);
-      
-      // Migrar del formato antiguo si es necesario
-      if (saved.shippingZones && saved.shippingZones.length > 0) {
-        const firstZone = saved.shippingZones[0];
-        // Si tiene "place" o "maxDistance" es formato antiguo
-        if (firstZone.place || firstZone.maxDistance) {
-          saved.shippingZones = defaultSettings.shippingZones;
-        }
-      }
-      
-      return { ...defaultSettings, ...saved };
-    } catch (err) {
-      console.error("❌ Error parsing settings:", err);
-      return defaultSettings;
-    }
-  });
-
+  const [settings, setSettings] = useState(defaultSettings);
   const [hasChanges, setHasChanges] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // ===============================
-  // 🔧 UPDATE GENÉRICO
-  // ===============================
+  const loadSettings = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await getSettings();
+      const merged = { ...defaultSettings, ...data };
+      
+      setSettings(merged);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(merged));
+    } catch (err) {
+      console.error("❌ Error cargando settings:", err);
+      setError(err.message);
+      
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          setSettings({ ...defaultSettings, ...JSON.parse(cached) });
+        }
+      } catch {}
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const saveSettings = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("admin_token");
+      if (!token) throw new Error("No autorizado");
+
+      await apiUpdateSettings(settings);
+
+      setHasChanges(false);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(settings));
+
+      window.dispatchEvent(new CustomEvent("settings:saved", { detail: settings }));
+
+      return { ok: true };
+    } catch (err) {
+      console.error("❌ Error guardando settings:", err);
+      return { ok: false, error: err.message };
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
+
   const updateSetting = useCallback((field, value) => {
     setSettings(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
   }, []);
 
-  // ===============================
-  // 🚚 CRUD ZONAS DE ENVÍO
-  // ===============================
   const addShippingZone = useCallback((price, label, localities = []) => {
     if (isNaN(price) || price < 0) return;
 
@@ -135,7 +107,7 @@ export function SettingsProvider({ children }) {
           label: String(label || `Zona - $${price}`),
           localities: Array.isArray(localities) ? localities : []
         }
-      ].sort((a, b) => a.price - b.price) // Ordenar por precio
+      ].sort((a, b) => a.price - b.price)
     }));
     setHasChanges(true);
   }, []);
@@ -150,7 +122,7 @@ export function SettingsProvider({ children }) {
               [field]: field === "price" ? Number(value) : value
             }
           : z
-      ).sort((a, b) => a.price - b.price) // Reordenar después de actualizar precio
+      ).sort((a, b) => a.price - b.price)
     }));
     setHasChanges(true);
   }, []);
@@ -163,9 +135,6 @@ export function SettingsProvider({ children }) {
     setHasChanges(true);
   }, []);
 
-  // ===============================
-  // 📍 AGREGAR/ELIMINAR LOCALIDADES DE UNA ZONA
-  // ===============================
   const addLocalityToZone = useCallback((zoneId, locality) => {
     if (!locality || locality.trim() === "") return;
 
@@ -174,7 +143,6 @@ export function SettingsProvider({ children }) {
       shippingZones: (prev.shippingZones || []).map(z => {
         if (z.id === zoneId) {
           const normalizedLocality = locality.toLowerCase().trim();
-          // Evitar duplicados
           if (z.localities && z.localities.includes(normalizedLocality)) {
             return z;
           }
@@ -205,9 +173,6 @@ export function SettingsProvider({ children }) {
     setHasChanges(true);
   }, []);
 
-  // ===============================
-  // 📍 CALCULAR COSTO POR LOCALIDAD
-  // ===============================
   const calculateShippingCost = useCallback((locality) => {
     if (!locality || locality.trim() === "") {
       return { cost: 0, zone: null, error: "Ingresá la localidad o barrio" };
@@ -216,11 +181,9 @@ export function SettingsProvider({ children }) {
     const normalizedLocality = locality.toLowerCase().trim();
     const zones = settings.shippingZones || defaultSettings.shippingZones;
 
-    // Buscar en qué zona está la localidad
     for (const zone of zones) {
       if (!zone.localities || zone.localities.length === 0) continue;
       
-      // Buscar coincidencia exacta o parcial
       const found = zone.localities.some(loc => {
         return normalizedLocality.includes(loc) || loc.includes(normalizedLocality);
       });
@@ -235,7 +198,6 @@ export function SettingsProvider({ children }) {
       }
     }
 
-    // Si no se encuentra en ninguna zona, usar precio por defecto
     const defaultPrice = settings.defaultShippingPrice || defaultSettings.defaultShippingPrice;
     
     return {
@@ -247,103 +209,42 @@ export function SettingsProvider({ children }) {
     };
   }, [settings.shippingZones, settings.defaultShippingPrice]);
 
-  // ===============================
-  // 🏦 VALIDACIÓN CBU
-  // ===============================
   const validateCbu = useCallback((cbuValue) => {
     if (!cbuValue) return false;
     const digits = String(cbuValue).replace(/\D/g, "");
     return digits.length === 22;
   }, []);
 
-  // ===============================
-  // 💾 GUARDAR
-  // ===============================
-  const saveSettings = useCallback(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      setHasChanges(false);
-
-      window.dispatchEvent(
-        new CustomEvent("settings:saved", { detail: settings })
-      );
-
-      return { ok: true };
-    } catch (err) {
-      console.error("❌ Error saving settings:", err);
-      return { ok: false, error: err };
-    }
-  }, [settings]);
-
-  // ===============================
-  // 🔄 RESET
-  // ===============================
   const resetSettings = useCallback(() => {
     setSettings(defaultSettings);
     setHasChanges(true);
   }, []);
 
-  // ===============================
-  // 🔄 LOAD EXTERNO
-  // ===============================
-  const loadSettings = useCallback(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        setSettings(defaultSettings);
-      } else {
-        setSettings({ ...defaultSettings, ...JSON.parse(raw) });
-      }
-      setHasChanges(false);
-    } catch (err) {
-      console.error("❌ Error loading settings:", err);
-    }
-  }, []);
-
-  // ===============================
-  // 🧠 SYNC ENTRE PESTAÑAS
-  // ===============================
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key === STORAGE_KEY) loadSettings();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [loadSettings]);
-
-  // ===============================
-  // ⚠️ BACKUP ANTES DE SALIR
-  // ===============================
-  useEffect(() => {
-    const onBeforeUnload = () => {
-      if (hasChanges) {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        } catch {}
-      }
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [hasChanges, settings]);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#F24C00] mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Cargando configuración...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <SettingsContext.Provider
       value={{
         settings,
         hasChanges,
-
+        loading,
+        error,
         updateSetting,
-
-        // 🚚 ZONAS
         addShippingZone,
         updateShippingZone,
         deleteShippingZone,
-        
-        // 📍 LOCALIDADES
         addLocalityToZone,
         removeLocalityFromZone,
         calculateShippingCost,
-
         saveSettings,
         resetSettings,
         loadSettings,

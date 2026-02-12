@@ -916,3 +916,83 @@ export async function getTransactionBySale(saleId) {
   console.error("❌ No se pudo obtener transaction by sale. Último error:", lastErr);
   throw lastErr || new Error("No se encontró transacción para la venta indicada.");
 }
+// =======================================
+// ⚙️ SETTINGS
+// =======================================
+export async function getSettings() {
+  try {
+    const data = await request(`${API_URL}/Settings`, "GET", null, false);
+    return data;
+  } catch (error) {
+    console.error("❌ Error en getSettings:", error.message);
+    // Retornar defaults si falla
+    return getDefaultSettings();
+  }
+}
+
+export async function updateSettings(settings) {
+  try {
+    const data = await request(`${API_URL}/Settings`, "PUT", settings, true);
+    return data;
+  } catch (error) {
+    console.error("❌ Error en updateSettings:", error.message);
+    throw error;
+  }
+}
+
+export async function resetSettings() {
+  try {
+    const data = await request(`${API_URL}/Settings/reset`, "POST", null, true);
+    return data;
+  } catch (error) {
+    console.error("❌ Error en resetSettings:", error.message);
+    throw error;
+  }
+}
+
+function getDefaultSettings() {
+  return {
+    storeName: "Forrajeria Jovita",
+    email: "contacto@forrajeriajovita.com",
+    phone: "+54 9 3814669135",
+    address: "Aragón 32 Yerba Buena, Argentina",
+    description: "Tu dietética de confianza con productos naturales y saludables",
+    storeLocation: "Yerba Buena, Tucumán",
+    freeShipping: true,
+    freeShippingMinimum: 5000,
+    shippingCost: 1500,
+    deliveryTime: "24-48 horas",
+    shippingZones: [
+      { 
+        id: 1, 
+        price: 800, 
+        label: "Zona 1 - $800",
+        localities: ["yerba buena", "san pablo", "el portal"]
+      },
+      { 
+        id: 2, 
+        price: 1200, 
+        label: "Zona 2 - $1200",
+        localities: ["san miguel de tucumán", "san miguel", "centro", "tucumán", "villa carmela", "barrio norte"]
+      },
+      { 
+        id: 3, 
+        price: 1800, 
+        label: "Zona 3 - $1800",
+        localities: ["tafí viejo", "tafi viejo", "banda del río salí", "alderetes", "las talitas"]
+      }
+    ],
+    defaultShippingPrice: 2500,
+    cash: true,
+    bankTransfer: true,
+    cards: true,
+    bankName: "Banco Macro",
+    accountHolder: "Forrajeria Jovita S.R.L.",
+    cbu: "0000003100010000000001",
+    alias: "JOVITA.DIETETICA",
+    emailNewOrder: true,
+    emailLowStock: true,
+    whatsappNewOrder: false,
+    whatsappLowStock: false
+  };
+}
