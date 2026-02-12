@@ -62,7 +62,7 @@ export function AuthProvider({ children }) {
     setUser(null);
     localStorage.removeItem("user_jovita");
     navigate("/");
-    console.log("Sesión cerrada");
+    // console.log("Sesión cerrada");
   };
 
   const updateUser = (userData) => {
