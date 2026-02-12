@@ -7,6 +7,7 @@ export default function SettingsPage() {
   const {
     settings,
     hasChanges,
+    saving,
     updateSetting,
     saveSettings,
     resetSettings,
@@ -22,6 +23,7 @@ export default function SettingsPage() {
   const [newZoneLabel, setNewZoneLabel] = useState("");
   const [newLocalityInputs, setNewLocalityInputs] = useState({});
 
+  // Si no hay settings todavía, mostramos un placeholder simple.
   if (!settings) return <div>Cargando configuración...</div>;
 
   const handleChange = (field, value) => {
@@ -44,18 +46,25 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveClick = () => {
+  // <-- Cambiado a async y usando await correctamente
+  const handleSaveClick = async () => {
     if (settings.bankTransfer && !validateCbu(settings.cbu)) {
       alert("El CBU debe tener 22 dígitos. Por favor verificalo antes de guardar.");
       return;
     }
 
-    const { ok, error } = saveSettings();
-    if (ok) {
-      alert("Configuración guardada exitosamente");
-    } else {
-      console.error(error);
-      alert("Error al guardar la configuración. Revisa la consola.");
+    try {
+      const result = await saveSettings(); // <- await obligatorio
+      if (result && result.ok) {
+        // Puedes usar alguna notificación bonita en vez de alert más adelante
+        alert("Configuración guardada exitosamente");
+      } else {
+        console.error("Error guardando settings:", result?.error);
+        alert("Error al guardar la configuración. Revisa la consola.");
+      }
+    } catch (err) {
+      console.error("Error inesperado al guardar settings:", err);
+      alert("Error inesperado al guardar la configuración.");
     }
   };
 
@@ -99,15 +108,20 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={handleSaveClick}
-              className="flex items-center gap-2 px-6 py-3 bg-[#F24C00] text-white font-bold rounded-xl hover:brightness-110 transition shadow-lg"
+              disabled={saving || !hasChanges}
+              aria-busy={saving}
+              className={`flex items-center gap-2 px-6 py-3 font-bold rounded-xl transition shadow-lg ${
+                saving ? "bg-gray-300 text-gray-600 cursor-not-allowed" : "bg-[#F24C00] text-white hover:brightness-110"
+              }`}
             >
               <Save size={20} />
-              Guardar Cambios
+              {saving ? "Guardando..." : "Guardar Cambios"}
             </button>
           )}
           <button
             type="button"
             onClick={resetSettings}
+            disabled={saving}
             className="px-4 py-3 bg-white border rounded-xl hover:bg-gray-50"
           >
             Resetear Cambios
@@ -536,7 +550,7 @@ export default function SettingsPage() {
             <p className="font-semibold text-green-900">Número de WhatsApp configurado</p>
           </div>
           <p className="text-sm text-green-700">
-            Las notificaciones se enviarán a: <span className="font-bold">+54 381 466-9136</span>
+            Las notificaciones se enviarán a: <span className="font-bold">+54 9 381 4669135</span>
           </p>
           <p className="text-xs text-green-600 mt-1">
             💡 Las notificaciones abrirán WhatsApp automáticamente con el mensaje preparado
