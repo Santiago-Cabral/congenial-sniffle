@@ -9,6 +9,7 @@ import FeaturesRow from "./Components/FeaturesRow";
 import FeaturedProducts from "./Components/FeaturedProducts";
 import AboutSection from "./Components/AboutSection";
 import Footer from "./Components/Footer";
+import FeaturedProductsCarousel from "./Components/Featuredproductscarousel";
 import CartSidebar from "./Components/CartSidebar";
 import ProductPage from "./pages/Product";
 import AllProducts from "../src/Components/AllProducts.jsx";
@@ -52,6 +53,7 @@ export default function App() {
             element={
               <>
                 <HeroSlider />
+                <FeaturedProductsCarousel />
                 <CategoriesSection />
                 <FeaturesRow />
                 <FeaturedProducts />

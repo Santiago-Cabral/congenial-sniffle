@@ -144,6 +144,7 @@ export function mapProduct(p) {
     categoryId: p.CategoryId ?? p.categoryId ?? null,
     categoryName: p.CategoryName ?? p.categoryName ?? p.category ?? "Sin categoría",
     isActived: p.IsActived ?? p.isActived ?? true,
+    isFeatured: p.IsFeatured ?? p.isFeatured ?? false, // 👈 NUEVO: campo destacado
     isDeleted: p.IsDeleted ?? p.isDeleted ?? false,
   };
 }
@@ -374,13 +375,15 @@ export async function listCategories() {
   }
 }
 
-export async function createCategory(body) {
-  const result = await request(`${API_URL}/Categories`, "POST", body, true);
+export async function createCategory(name) {
+  // El backend espera solo el string del nombre, no un objeto
+  const result = await request(`${API_URL}/Categories`, "POST", name, true);
   return mapCategory(result);
 }
 
-export async function updateCategory(id, body) {
-  const result = await request(`${API_URL}/Categories/${id}`, "PUT", body, true);
+export async function updateCategory(id, name) {
+  // El backend espera solo el string del nombre, no un objeto
+  const result = await request(`${API_URL}/Categories/${id}`, "PUT", name, true);
   return mapCategory(result);
 }
 

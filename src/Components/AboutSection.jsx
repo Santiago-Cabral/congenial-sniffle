@@ -100,10 +100,10 @@ export default function AboutSection() {
                   Teléfono
                 </p>
                 <a
-                  href="https://wa.me/+543814669136"
+                  href="https://wa.me/+5493814669135"
                   className="text-sm text-[#F24C00] font-semibold hover:underline"
                 >
-                  0381 466-9136
+                381 4669135
                 </a>
               </div>
             </div>

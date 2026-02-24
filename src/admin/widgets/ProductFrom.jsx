@@ -23,13 +23,14 @@ export default function ProductForm({ product, onClose }) {
     baseUnit: 2,
     categoryId: "",
     isActived: true,
-    stock: "", // 👈 NUEVO: campo de stock
+    isFeatured: false, // 👈 NUEVO: campo destacado
+    stock: "", // campo de stock
   });
 
   const [categories, setCategories] = useState([]);
   const [images, setImages] = useState([]); // array de URLs
   const [loadingCategories, setLoadingCategories] = useState(false);
-  const [loadingStock, setLoadingStock] = useState(false); // 👈 NUEVO
+  const [loadingStock, setLoadingStock] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -74,10 +75,11 @@ export default function ProductForm({ product, onClose }) {
         baseUnit: product.baseUnitId || 2,
         categoryId: product.categoryId || "",
         isActived: product.isActived ?? true,
+        isFeatured: product.isFeatured ?? false, // 👈 cargar valor de destacado
         stock:
           product.stock !== undefined && product.stock !== null
             ? String(product.stock)
-            : "", // 👈 usamos el stock que viene del listado si existe
+            : "",
       }));
 
       setImages(product.image ? [product.image] : []);
@@ -115,6 +117,7 @@ export default function ProductForm({ product, onClose }) {
         ...prev,
         baseUnit: 2,
         isActived: true,
+        isFeatured: false, // 👈 por defecto NO destacado
         stock: "", // vacio por defecto
       }));
       setImages([]);
@@ -213,6 +216,7 @@ export default function ProductForm({ product, onClose }) {
           image: mainImage,
           categoryId: Number(form.categoryId),
           isActived: !!form.isActived,
+          isFeatured: !!form.isFeatured, // 👈 AGREGAR AL PAYLOAD
           updateDate: new Date().toISOString(),
         };
 
@@ -232,6 +236,7 @@ export default function ProductForm({ product, onClose }) {
           image: mainImage,
           categoryId: Number(form.categoryId),
           isActived: !!form.isActived,
+          isFeatured: !!form.isFeatured, // 👈 AGREGAR AL PAYLOAD
         };
 
         const created = await createProduct(payload);
@@ -344,7 +349,7 @@ export default function ProductForm({ product, onClose }) {
                 />
               </div>
               <div>
-                <label className="block text.sm font-semibold mb-1">
+                <label className="block text-sm font-semibold mb-1">
                   Precio venta
                 </label>
                 <input
@@ -500,17 +505,42 @@ export default function ProductForm({ product, onClose }) {
               )}
             </div>
 
-            {/* Activo */}
-            <div className="flex items-center gap-2">
-              <input
-                id="isActived"
-                type="checkbox"
-                checked={!!form.isActived}
-                onChange={(e) => handleChange("isActived", e.target.checked)}
-              />
-              <label htmlFor="isActived" className="text-sm font-semibold">
-                Producto activo
-              </label>
+            {/* Activo & Destacado */}
+            <div className="space-y-3 border-t pt-4">
+              <div className="flex items-center gap-2">
+                <input
+                  id="isActived"
+                  type="checkbox"
+                  checked={!!form.isActived}
+                  onChange={(e) => handleChange("isActived", e.target.checked)}
+                  className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                />
+                <label htmlFor="isActived" className="text-sm font-semibold flex items-center gap-2">
+                  <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Producto activo
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  id="isFeatured"
+                  type="checkbox"
+                  checked={!!form.isFeatured}
+                  onChange={(e) => handleChange("isFeatured", e.target.checked)}
+                  className="w-4 h-4 text-yellow-600 rounded focus:ring-yellow-500"
+                />
+                <label htmlFor="isFeatured" className="text-sm font-semibold flex items-center gap-2">
+                  <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  Producto destacado
+                </label>
+                <span className="text-xs text-gray-500">
+                  (aparecerá en la sección destacados del home)
+                </span>
+              </div>
             </div>
 
             {/* Botones */}
@@ -518,14 +548,14 @@ export default function ProductForm({ product, onClose }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg border px-4 py-2 text-sm"
+                className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="btn-primary rounded-lg px-5 py-2 text-sm font-semibold disabled:opacity-60"
+                className="btn-primary rounded-lg px-5 py-2 text-sm font-semibold disabled:opacity-60 bg-green-600 text-white hover:bg-green-700"
               >
                 {saving
                   ? product

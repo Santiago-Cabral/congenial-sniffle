@@ -6,13 +6,16 @@ import {
   Users, 
   Settings, 
   LogOut, 
-  Building2
+  Building2,
+  WalletCards
+  
 } from "lucide-react";
 
 const menuItems = [
   { path: "/admin", icon: LayoutDashboard, label: "Dashboard", exact: true },
   { path: "/admin/productos", icon: Package, label: "Productos" },
   { path: "/admin/ordenes", icon: ShoppingCart, label: "Órdenes" },
+  { path: "/admin/categorias", icon: WalletCards, label: "Categorías" },
   { path: "/admin/clientes", icon: Users, label: "Clientes" },
   { path: "/admin/sucursales", icon: Building2, label: "Sucursales" },
   { path: "/admin/configuracion", icon: Settings, label: "Configuración" }
