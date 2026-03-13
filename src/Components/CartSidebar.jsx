@@ -1,4 +1,3 @@
-// src/components/CartSidebar.jsx
 import React from "react";
 import { X, Trash, Plus, Minus } from "lucide-react";
 import { useCart } from "../Context/CartContext";
@@ -35,16 +34,28 @@ export default function CartSidebar({ open, onClose }) {
           ) : (
             <div className="space-y-4">
               {cart.map((item) => (
-                <div key={item.id} className="flex gap-4 bg-gray-50 p-4 rounded-xl items-center">
-                  <img src={item.image || "/sin-foto.png"} alt={item.name} className="w-20 h-20 object-cover rounded-lg" />
+                <div key={item.cartKey} className="flex gap-4 bg-gray-50 p-4 rounded-xl items-center">
+                  <img
+                    src={item.image || "/sin-foto.png"}
+                    alt={item.name}
+                    className="w-20 h-20 object-cover rounded-lg"
+                  />
 
                   <div className="flex-1">
-                    <h4 className="font-bold text-[#1C1C1C] mb-1">{item.name}</h4>
-                    <p className="text-[#F24C00] font-bold text-lg mb-2">${formatMoney(item.price)}</p>
+                    <h4 className="font-bold text-[#1C1C1C] mb-0.5">{item.name}</h4>
+
+                    {/* Presentación elegida (ej: "Bolsa 20kg", "1 Kilogramo") */}
+                    {item.unitLabel && (
+                      <p className="text-xs text-[#5A564E] mb-1">{item.unitLabel}</p>
+                    )}
+
+                    <p className="text-[#F24C00] font-bold text-lg mb-2">
+                      ${formatMoney(item.price)}
+                    </p>
 
                     <div className="flex items-center gap-3">
                       <button
-                        onClick={() => updateQty(item.id, Math.max(1, item.qty - 1))}
+                        onClick={() => updateQty(item.cartKey, Math.max(1, item.qty - 1))}
                         className="w-8 h-8 rounded-lg border flex items-center justify-center hover:border-[#F24C00]"
                       >
                         <Minus size={14} />
@@ -53,13 +64,16 @@ export default function CartSidebar({ open, onClose }) {
                       <span className="font-bold text-lg w-8 text-center">{item.qty}</span>
 
                       <button
-                        onClick={() => updateQty(item.id, Math.min(item.stock || 999, item.qty + 1))}
+                        onClick={() => updateQty(item.cartKey, Math.min(item.stock || 999, item.qty + 1))}
                         className="w-8 h-8 rounded-lg border flex items-center justify-center hover:border-[#F24C00]"
                       >
                         <Plus size={14} />
                       </button>
 
-                      <button onClick={() => removeFromCart(item.id)} className="ml-auto text-red-600">
+                      <button
+                        onClick={() => removeFromCart(item.cartKey)}
+                        className="ml-auto text-red-600"
+                      >
                         <Trash size={18} />
                       </button>
                     </div>
@@ -83,7 +97,6 @@ export default function CartSidebar({ open, onClose }) {
 
               <div className="mt-4">
                 <CheckoutForm onClose={onClose} />
-                
               </div>
             </div>
           )}

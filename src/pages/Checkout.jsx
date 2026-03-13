@@ -259,8 +259,8 @@ export default function Checkout() {
 
             <div className="space-y-3 mb-4">
               {cart.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span>{item.name} × {item.qty}</span>
+                <div key={item.cartKey ?? item.id} className="flex justify-between text-sm">
+                  <span>{item.name}{item.unitLabel ? ` · ${item.unitLabel}` : ""} × {item.qty}</span>
                   <span>${formatMoney(item.price * item.qty)}</span>
                 </div>
               ))}

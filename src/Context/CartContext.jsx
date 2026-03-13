@@ -13,10 +13,7 @@ export function useCart() {
 /* ======================================================
    🔥 NORMALIZACIÓN GLOBAL (UNIFICADA)
    ====================================================== */
-function normalizeProduct(p) {
-  // console.log("🔍 Normalizando producto:", p);
-  
-  // Imagen válida o fallback
+function normalizeProduct(p, unitOverride = null) {
   const img = p.image || p.imageUrl || p.img || "";
   const invalidImage =
     !img ||
@@ -25,27 +22,30 @@ function normalizeProduct(p) {
     img.includes("?text") ||
     img.includes("placeholder.com");
 
-  const normalized = {
+  // Si viene con unidad, usamos su precio y la combinación id+unitId como clave
+  const unitId   = unitOverride?.id   ?? p.unitId   ?? null;
+  const unitLabel = unitOverride?.displayName ?? p.unitLabel ?? null;
+  const price    = unitOverride != null
+    ? Number(unitOverride.retailPrice ?? 0)
+    : Number(p.price ?? p.retailPrice ?? 0);
+
+  // Clave única: si tiene unidad, diferenciamos por ella
+  const cartKey = unitId ? `${p.id}_${unitId}` : String(p.id);
+
+  return {
+    // cartKey es lo que usamos para deduplicar en el carrito
+    cartKey,
     id: p.id,
     name: p.name || p.nombre || "Producto",
-    price: Number(p.price ?? p.retailPrice ?? 0),
+    price,
     stock: p.stock === null || p.stock === undefined ? 999 : Number(p.stock),
-
     image: invalidImage ? "/placeholder.png" : img,
-
-    category:
-      p.categoryName ||
-      p.category ||
-      p.categoria ||
-      "Sin categoría",
-
-    // 👉 Si no viene isActived, asumimos que está activo
-    // Solo bloqueamos si es explícitamente false
+    category: p.categoryName || p.category || p.categoria || "Sin categoría",
     isActived: p.isActived === undefined ? true : p.isActived !== false,
+    // Datos de unidad para mostrar en carrito y checkout
+    unitId,
+    unitLabel,
   };
-  
-  // console.log("✅ Producto normalizado:", normalized);
-  return normalized;
 }
 
 /* ======================================================
@@ -61,75 +61,68 @@ export function CartProvider({ children }) {
     }
   });
 
-  // Guardar cambios
   useEffect(() => {
     localStorage.setItem("cart_jovita", JSON.stringify(cart));
-    // console.log("💾 Carrito guardado:", cart);
   }, [cart]);
 
   /* ======================================================
      ➕ AGREGAR AL CARRITO
+     Firma: addToCart(rawProduct, qty, unit?)
+       - rawProduct: objeto producto normalizado (viene de mapProduct)
+       - qty: cantidad
+       - unit: objeto unidad { id, displayName, retailPrice } (opcional)
+         Si se pasa, el precio y la clave del carrito vienen de la unidad.
      ====================================================== */
-  const addToCart = (rawProduct, qty = 1) => {
-    // console.log("🛒 addToCart llamado con:", rawProduct, "qty:", qty);
-    
+  const addToCart = (rawProduct, qty = 1, unit = null) => {
     if (!rawProduct || !rawProduct.id) {
       console.error("❌ Producto inválido (sin id):", rawProduct);
       return;
     }
 
-    const product = normalizeProduct(rawProduct);
+    const product = normalizeProduct(rawProduct, unit);
 
-    // 🔒 Bloquea SOLO si isActived es explícitamente false
     if (product.isActived === false) {
-      console.warn("⚠️ Producto desactivado:", product.name);
       alert(`El producto "${product.name}" no está disponible actualmente`);
       return;
     }
 
-    // 🔒 Bloquea si no hay stock (pero no si stock es 999 que es nuestro default)
     if (product.stock !== 999 && product.stock <= 0) {
-      console.warn("⚠️ Producto sin stock:", product.name);
       alert(`El producto "${product.name}" no tiene stock disponible`);
       return;
     }
 
-    // console.log("✅ Producto válido, agregando al carrito");
-
     setCart((prev) => {
-      const existing = prev.find((p) => p.id === product.id);
+      // Deduplicar por cartKey (id + unitId)
+      const existing = prev.find((p) => p.cartKey === product.cartKey);
 
       if (existing) {
         const newQty = Math.min(existing.qty + qty, product.stock);
-        // console.log(`📦 Actualizando cantidad de "${product.name}": ${existing.qty} → ${newQty}`);
         return prev.map((p) =>
-          p.id === product.id ? { ...p, qty: newQty } : p
+          p.cartKey === product.cartKey ? { ...p, qty: newQty } : p
         );
       }
 
-      // console.log(`✨ Agregando nuevo producto al carrito: "${product.name}"`);
       return [...prev, { ...product, qty: Math.min(qty, product.stock) }];
     });
   };
 
   /* ======================================================
-     🔄 CAMBIAR CANTIDAD
+     🔄 CAMBIAR CANTIDAD — usa cartKey
      ====================================================== */
-  const updateQty = (id, qty) => {
+  const updateQty = (cartKey, qty) => {
     if (qty < 1) return;
-
     setCart((prev) =>
       prev.map((p) =>
-        p.id === id ? { ...p, qty: Math.min(qty, p.stock) } : p
+        p.cartKey === cartKey ? { ...p, qty: Math.min(qty, p.stock) } : p
       )
     );
   };
 
   /* ======================================================
-     ❌ ELIMINAR
+     ❌ ELIMINAR — usa cartKey
      ====================================================== */
-  const removeFromCart = (id) => {
-    setCart((prev) => prev.filter((p) => p.id !== id));
+  const removeFromCart = (cartKey) => {
+    setCart((prev) => prev.filter((p) => p.cartKey !== cartKey));
   };
 
   /* ======================================================
@@ -140,7 +133,7 @@ export function CartProvider({ children }) {
   /* ======================================================
      🧮 TOTALES
      ====================================================== */
-  const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const total     = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const itemCount = cart.reduce((sum, item) => sum + item.qty, 0);
 
   return (
