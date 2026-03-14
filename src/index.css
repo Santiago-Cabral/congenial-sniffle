@@ -195,3 +195,9 @@ html {
 .btn-secondary {
   @apply bg-gray-200 text-gray-700 font-semibold rounded-xl py-3 hover:bg-gray-300 transition;
 }
+.overflow-x-hidden {
+  scrollbar-width: none;
+}
+.overflow-x-hidden::-webkit-scrollbar {
+  display: none;
+}

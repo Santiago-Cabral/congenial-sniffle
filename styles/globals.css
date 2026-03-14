@@ -123,3 +123,9 @@
     @apply bg-background text-foreground;
   }
 }
+.overflow-x-hidden {
+  scrollbar-width: none;
+}
+.overflow-x-hidden::-webkit-scrollbar {
+  display: none;
+}

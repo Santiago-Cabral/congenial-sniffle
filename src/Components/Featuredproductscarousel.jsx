@@ -14,7 +14,6 @@ export default function FeaturedProductsCarousel() {
     (p) => p.isFeatured === true && p.isActived === true
   );
 
-  // Intersection Observer para animación de entrada
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setIsVisible(true); },
@@ -61,14 +60,12 @@ export default function FeaturedProductsCarousel() {
 
   if (loading) {
     return (
-      <section className="relative py-24 overflow-hidden bg-[#FAFAF8]">
-        {/* Fondo decorativo */}
-        <div className="absolute inset-0 pointer-events-none">
+      <section className="relative py-24 bg-[#FAFAF8]">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#F24C00] to-transparent opacity-30" />
           <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-[#F24C00]/5 blur-3xl" />
           <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-[#F24C00]/5 blur-3xl" />
         </div>
-
         <div className="relative max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-[#F24C00]/10 text-[#F24C00] px-4 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase mb-5">
@@ -97,15 +94,14 @@ export default function FeaturedProductsCarousel() {
   return (
     <section
       ref={sectionRef}
-      className="relative py-24 overflow-hidden bg-[#FAFAF8]"
+      className="relative py-24 bg-[#FAFAF8]"
     >
-      {/* ── Fondo decorativo ── */}
-      <div className="absolute inset-0 pointer-events-none">
+      {/* Fondo decorativo — overflow-hidden solo acá adentro */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#F24C00]/40 to-transparent" />
         <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[#F24C00]/20 to-transparent" />
         <div className="absolute -top-60 -right-60 w-[500px] h-[500px] rounded-full bg-[#F24C00]/6 blur-3xl" />
         <div className="absolute -bottom-60 -left-60 w-[500px] h-[500px] rounded-full bg-orange-100/60 blur-3xl" />
-        {/* Patrón de puntos sutil */}
         <div
           className="absolute inset-0 opacity-[0.025]"
           style={{
@@ -117,13 +113,12 @@ export default function FeaturedProductsCarousel() {
 
       <div className="relative max-w-7xl mx-auto px-6">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div
           className={`text-center mb-16 transition-all duration-700 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
           }`}
         >
-          {/* Pill badge */}
           <div className="inline-flex items-center gap-2 bg-[#F24C00]/10 text-[#F24C00] px-4 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase mb-5 border border-[#F24C00]/20">
             <span className="w-1.5 h-1.5 rounded-full bg-[#F24C00] animate-pulse" />
             Selección especial
@@ -133,21 +128,8 @@ export default function FeaturedProductsCarousel() {
             Productos{" "}
             <span className="relative inline-block">
               <span className="relative z-10 text-[#F24C00]">Destacados</span>
-              {/* Subrayado decorativo */}
-              <svg
-                className="absolute -bottom-2 left-0 w-full"
-                viewBox="0 0 200 8"
-                fill="none"
-                preserveAspectRatio="none"
-              >
-                <path
-                  d="M2 6 C50 2, 100 7, 150 3 S190 6, 198 4"
-                  stroke="#F24C00"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  fill="none"
-                  opacity="0.6"
-                />
+              <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 200 8" fill="none" preserveAspectRatio="none">
+                <path d="M2 6 C50 2, 100 7, 150 3 S190 6, 198 4" stroke="#F24C00" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.6" />
               </svg>
             </span>
           </h2>
@@ -156,7 +138,6 @@ export default function FeaturedProductsCarousel() {
             Los mejores productos seleccionados especialmente para vos
           </p>
 
-          {/* Separador */}
           <div className="flex items-center justify-center gap-3 mt-6">
             <div className="h-px w-16 bg-gradient-to-r from-transparent to-[#F24C00]/50" />
             <div className="w-2 h-2 rounded-full bg-[#F24C00]" />
@@ -166,7 +147,7 @@ export default function FeaturedProductsCarousel() {
           </div>
         </div>
 
-        {/* ── Contenido: Carrusel o Grid ── */}
+        {/* Contenido */}
         <div
           className={`transition-all duration-700 delay-200 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
@@ -178,7 +159,6 @@ export default function FeaturedProductsCarousel() {
               onMouseEnter={() => setIsPaused(true)}
               onMouseLeave={() => setIsPaused(false)}
             >
-              {/* Botón Anterior */}
               <button
                 onClick={handlePrev}
                 className="absolute left-0 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center w-12 h-12 bg-white text-[#F24C00] border-2 border-[#F24C00]/20 rounded-full shadow-lg hover:bg-[#F24C00] hover:text-white hover:border-[#F24C00] hover:shadow-xl transition-all duration-200 hover:scale-110"
@@ -189,26 +169,20 @@ export default function FeaturedProductsCarousel() {
                 </svg>
               </button>
 
-              {/* Track */}
-              <div className="overflow-hidden md:px-16 px-1">
+              {/* overflow-x-hidden para el slide, overflow-y-visible para el badge */}
+              <div className="overflow-x-hidden overflow-y-visible md:px-16 px-1 pt-6 -mt-6">
                 <div
                   className="flex transition-transform duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] gap-5"
-                  style={{
-                    transform: `translateX(-${currentIndex * (100 / getItemsToShow())}%)`,
-                  }}
+                  style={{ transform: `translateX(-${currentIndex * (100 / getItemsToShow())}%)` }}
                 >
                   {featuredProducts.map((product, i) => (
-                    <div
-                      key={product.id}
-                      className="flex-shrink-0 w-full sm:w-1/2 md:w-1/3 lg:w-1/4 px-1"
-                    >
+                    <div key={product.id} className="flex-shrink-0 w-full sm:w-1/2 md:w-1/3 lg:w-1/4 px-1">
                       <FeaturedCard product={product} index={i} />
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Botón Siguiente */}
               <button
                 onClick={handleNext}
                 className="absolute right-0 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center w-12 h-12 bg-white text-[#F24C00] border-2 border-[#F24C00]/20 rounded-full shadow-lg hover:bg-[#F24C00] hover:text-white hover:border-[#F24C00] hover:shadow-xl transition-all duration-200 hover:scale-110"
@@ -219,25 +193,19 @@ export default function FeaturedProductsCarousel() {
                 </svg>
               </button>
 
-              {/* Dots */}
               <div className="flex justify-center items-center gap-2 mt-8">
-                {Array.from({
-                  length: Math.max(1, featuredProducts.length - getItemsToShow() + 1),
-                }).map((_, idx) => (
+                {Array.from({ length: Math.max(1, featuredProducts.length - getItemsToShow() + 1) }).map((_, idx) => (
                   <button
                     key={idx}
                     onClick={() => setCurrentIndex(idx)}
                     className={`rounded-full transition-all duration-300 ${
-                      idx === currentIndex
-                        ? "w-8 h-2.5 bg-[#F24C00]"
-                        : "w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400"
+                      idx === currentIndex ? "w-8 h-2.5 bg-[#F24C00]" : "w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400"
                     }`}
                     aria-label={`Slide ${idx + 1}`}
                   />
                 ))}
               </div>
 
-              {/* Pausa indicator */}
               {isPaused && (
                 <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -248,7 +216,7 @@ export default function FeaturedProductsCarousel() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 pt-6">
               {featuredProducts.map((product, i) => (
                 <FeaturedCard key={product.id} product={product} index={i} />
               ))}
@@ -256,7 +224,6 @@ export default function FeaturedProductsCarousel() {
           )}
         </div>
 
-        {/* ── CTA Ver todos ── */}
         {featuredProducts.length >= 4 && (
           <div
             className={`text-center mt-14 transition-all duration-700 delay-300 ${
@@ -281,16 +248,15 @@ export default function FeaturedProductsCarousel() {
   );
 }
 
-// ── Card individual con badge ──
 function FeaturedCard({ product, index }) {
   return (
     <div
-      className="relative group"
+      className="relative group overflow-visible"
       style={{ animationDelay: `${index * 80}ms` }}
     >
       {/* Badge DESTACADO */}
       <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-        <div className="flex items-center gap-1 bg-[#F24C00] text-white px-3 py-1 rounded-full text-[10px] font-black tracking-wider shadow-md shadow-[#F24C00]/30 border border-white/20">
+        <div className="flex items-center gap-1 bg-[#F24C00] text-white px-3 py-1 rounded-full text-[10px] font-black tracking-wider shadow-md shadow-[#F24C00]/30 border border-white/20 whitespace-nowrap">
           <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
           </svg>
@@ -304,7 +270,7 @@ function FeaturedCard({ product, index }) {
       {/* Borde sutil */}
       <div className="absolute inset-0 rounded-2xl ring-1 ring-[#F24C00]/0 group-hover:ring-[#F24C00]/25 transition-all duration-300 pointer-events-none z-10" />
 
-      <div className="relative pt-3">
+      <div className="relative pt-5">
         <ProductCard product={product} />
       </div>
     </div>
