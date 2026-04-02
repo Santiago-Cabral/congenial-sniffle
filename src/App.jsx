@@ -20,25 +20,72 @@ import WhatsAppAssistant from "./Components/WhatsAppButton";
 import UserLoginPage from "./pages/UserLoginPage.jsx";
 import PerfilPage from "./pages/PerfilPage";
 import { useUserAuth } from "./Context/UserAuthContext";
+import { useProducts } from "./Context/ProductsContext";
 
 import Error404 from "./pages/Error404";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 
-// 🟦 PROTECCIÓN DE RUTA PARA USUARIO NORMAL (mantener)
 function ProtectedClientRoute({ children }) {
   const { isAuthenticated } = useUserAuth();
-
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-
   return children;
+}
+
+function GlobalLoader() {
+  return (
+    <div className="fixed inset-0 bg-[#FAFAF8] flex flex-col items-center justify-center z-50">
+      {/* Logo */}
+      <img
+        src="/logo.png"
+        alt="Jovita"
+        className="w-24 h-24 object-contain mb-8"
+        onError={(e) => { e.target.style.display = "none"; }}
+      />
+
+      {/* Spinner */}
+      <div className="w-14 h-14 border-4 border-[#F24C00]/20 border-t-[#F24C00] rounded-full animate-spin mb-6" />
+
+      {/* Texto */}
+      <p className="text-[#F24C00] font-black text-xl tracking-wide animate-pulse">
+        Cargando productos...
+      </p>
+      <p className="text-[#5A564E] text-sm mt-2">
+        Esto puede tardar unos segundos
+      </p>
+
+      {/* Puntos animados */}
+      <div className="flex gap-2 mt-6">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="w-2 h-2 rounded-full bg-[#F24C00]"
+            style={{ animation: `bounce 1s ease-in-out ${i * 0.2}s infinite` }}
+          />
+        ))}
+      </div>
+
+      <style>{`
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); opacity: 0.4; }
+          50% { transform: translateY(-8px); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
 }
 
 export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const location = useLocation();
+  const { loading } = useProducts();
 
   const isAdminRoute = location.pathname.startsWith("/admin");
+
+  // 🔄 Mostrar loader global mientras cargan los productos
+  if (loading && !isAdminRoute) {
+    return <GlobalLoader />;
+  }
 
   return (
     <>
@@ -73,10 +120,10 @@ export default function App() {
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
 
-          {/* LOGIN USUARIO NORMAL */}
+          {/* LOGIN */}
           <Route path="/login" element={<UserLoginPage />} />
 
-          {/* PERFIL (CLIENTE) PROTEGIDO */}
+          {/* PERFIL PROTEGIDO */}
           <Route
             path="/perfil"
             element={
@@ -86,8 +133,7 @@ export default function App() {
             }
           />
 
-          {/* ✅ TODAS LAS RUTAS ADMIN (SIN PROTECCIÓN AQUÍ) 
-              La protección está dentro de AdminApp.jsx */}
+          {/* ADMIN */}
           <Route path="/admin/*" element={<AdminApp />} />
 
           <Route path="/404" element={<Error404 />} />
