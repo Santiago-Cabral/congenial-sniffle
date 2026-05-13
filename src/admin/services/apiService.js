@@ -48,7 +48,6 @@ async function request(url, method = "GET", body = null, auth = false) {
         const text = await res.text();
         console.error("❌ RESPONSE TEXT:", text);
 
-        // Intentar parsear como JSON
         if (text && text.trim() !== "") {
           try {
             const json = JSON.parse(text);
@@ -65,7 +64,6 @@ async function request(url, method = "GET", body = null, auth = false) {
         detail = `No se pudo leer la respuesta del servidor: ${parseError.message}`;
       }
 
-      // Manejar diferentes códigos de error
       const error = new Error();
 
       if (res.status === 500) {
@@ -144,7 +142,7 @@ export function mapProduct(p) {
     categoryId: p.CategoryId ?? p.categoryId ?? null,
     categoryName: p.CategoryName ?? p.categoryName ?? p.category ?? "Sin categoría",
     isActived: p.IsActived ?? p.isActived ?? true,
-    isFeatured: p.IsFeatured ?? p.isFeatured ?? false, // 👈 NUEVO: campo destacado
+    isFeatured: p.IsFeatured ?? p.isFeatured ?? false,
     isDeleted: p.IsDeleted ?? p.isDeleted ?? false,
   };
 }
@@ -214,7 +212,6 @@ function mapSale(s) {
 
   const externalData = s.ExternalData ?? s.externalData ?? null;
 
-  // 1️⃣ Intentar externalData si existe
   if (externalData) {
     try {
       const parsed =
@@ -238,7 +235,6 @@ function mapSale(s) {
     }
   }
 
-  // 2️⃣ Fallback mínimo (sin "Cliente")
   if (!customerDetails) {
     customerDetails = {
       name: rawCustomer || "",
@@ -288,7 +284,6 @@ function mapSale(s) {
 
     payments: paymentsArray.map(mapSalePayment),
 
-    // 👇 CLAVES
     customerDetails,
     clientName: rawCustomer || "",
     paymentMethod: s.PaymentMethod ?? s.paymentMethod ?? "",
@@ -296,7 +291,6 @@ function mapSale(s) {
       s.FulfillmentMethod ?? s.fulfillmentMethod ?? "delivery",
   };
 }
-
 
 // =======================================
 // 🔐 AUTH
@@ -328,11 +322,7 @@ export async function listProducts() {
   try {
     const data = await request(`${API_URL}/Products`, "GET", null, false);
     const mapped = (Array.isArray(data) ? data : []).map(mapProduct);
-
-    // Filtrar productos NO eliminados
     const activeProducts = mapped.filter(p => !p.isDeleted);
-
-  // console.log(`📦 Productos totales: ${mapped.length}, Activos: ${activeProducts.length}`);
     return activeProducts;
   } catch (error) {
     console.error("❌ Error en listProducts:", error.message);
@@ -376,13 +366,11 @@ export async function listCategories() {
 }
 
 export async function createCategory(name) {
-  // El backend espera solo el string del nombre, no un objeto
   const result = await request(`${API_URL}/Categories`, "POST", name, true);
   return mapCategory(result);
 }
 
 export async function updateCategory(id, name) {
-  // El backend espera solo el string del nombre, no un objeto
   const result = await request(`${API_URL}/Categories/${id}`, "PUT", name, true);
   return mapCategory(result);
 }
@@ -402,7 +390,7 @@ export async function listBranches() {
     return [];
   }
 }
-// Activar / desactivar sucursal
+
 export async function setBranchActive(id, isActive) {
   return request(
     `${API_URL}/Branches/${id}/active?value=${isActive}`,
@@ -540,8 +528,6 @@ export async function updateOrderStatus(id, status) {
 // 🛒 CHECKOUT PÚBLICO (WEB)
 // =======================================
 export async function createPublicSale(body) {
-  // console.log("📤 createPublicSale - Datos recibidos:", body);
-
   if (!body.customer || body.customer.trim() === "") {
     throw new Error("La dirección es requerida");
   }
@@ -562,11 +548,9 @@ export async function createPublicSale(body) {
     shippingCost: Number(body.shippingCost || 0),
     paymentMethod: String(body.paymentMethod || "transfer").toLowerCase(),
     paymentReference: String(body.paymentReference || "Pedido Web"),
-    fulfillmentMethod: String(body.fulfillmentMethod || "delivery").toLowerCase(), // ✅ AGREGADO
+    fulfillmentMethod: String(body.fulfillmentMethod || "delivery").toLowerCase(),
     externalData: body.externalData ?? null
   };
-
-  // console.log("📦 createPublicSale - Payload final:", JSON.stringify(payload, null, 2));
 
   payload.items.forEach((item, i) => {
     if (isNaN(item.productId) || isNaN(item.quantity) || isNaN(item.unitPrice)) {
@@ -581,15 +565,11 @@ export async function createPublicSale(body) {
 
   try {
     const result = await request(`${API_URL}/Sales/public`, "POST", payload, false);
-    // console.log("✅ createPublicSale - Venta creada:", result);
-    
-    // ⭐ ENVIAR NOTIFICACIÓN DE WHATSAPP SI ESTÁ HABILITADA
+
     try {
       const settings = JSON.parse(localStorage.getItem('jovita_settings_cache') || '{}');
-      
+
       if (settings.whatsappNewOrder) {
-        // console.log("📱 Enviando notificación de WhatsApp...");
-        
         const notificationData = {
           id: result.id || result.Id,
           customer: payload.customer,
@@ -597,7 +577,7 @@ export async function createPublicSale(body) {
           total: result.total || result.Total,
           shippingCost: payload.shippingCost,
           paymentMethod: payload.paymentMethod,
-          fulfillmentMethod: payload.fulfillmentMethod, // ✅ AGREGADO
+          fulfillmentMethod: payload.fulfillmentMethod,
           customerDetails: body.customerDetails || {
             name: payload.customer,
             phone: payload.phone || '',
@@ -613,13 +593,14 @@ export async function createPublicSale(body) {
     } catch (notifError) {
       console.error("⚠️ Error al enviar notificación (no crítico):", notifError);
     }
-    
+
     return mapSale(result);
   } catch (error) {
     console.error("❌ createPublicSale - Error:", error.message);
     throw error;
   }
 }
+
 // =======================================
 // 📊 ESTADÍSTICAS
 // =======================================
@@ -628,12 +609,7 @@ export async function getTodayStats() {
     return await request(`${API_URL}/Sales/today`, "GET", null, true);
   } catch (error) {
     console.error("❌ Error en getTodayStats:", error.message);
-    return {
-      total: 0,
-      count: 0,
-      average: 0,
-      error: error.message
-    };
+    return { total: 0, count: 0, average: 0, error: error.message };
   }
 }
 
@@ -643,12 +619,7 @@ export async function getTotalStatsRange(startDate, endDate) {
     return await request(`${API_URL}/Sales/total?${params.toString()}`, "GET", null, true);
   } catch (error) {
     console.error("❌ Error en getTotalStatsRange:", error.message);
-    return {
-      total: 0,
-      count: 0,
-      average: 0,
-      error: error.message
-    };
+    return { total: 0, count: 0, average: 0, error: error.message };
   }
 }
 
@@ -660,12 +631,7 @@ export async function getTotalStats() {
     return await getTotalStatsRange(start, end);
   } catch (error) {
     console.error("❌ Error en getTotalStats:", error.message);
-    return {
-      total: 0,
-      count: 0,
-      average: 0,
-      error: error.message
-    };
+    return { total: 0, count: 0, average: 0, error: error.message };
   }
 }
 
@@ -674,12 +640,7 @@ export async function getMonthlyStats(year, month) {
     return await request(`${API_URL}/Sales/period/${year}/${month}`, "GET", null, true);
   } catch (error) {
     console.error(`❌ Error en getMonthlyStats(${year}/${month}):`, error.message);
-    return {
-      total: 0,
-      count: 0,
-      average: 0,
-      error: error.message
-    };
+    return { total: 0, count: 0, average: 0, error: error.message };
   }
 }
 
@@ -742,6 +703,56 @@ export async function addProductStock(productId, body) {
     throw error;
   }
 }
+
+// =======================================
+// 🔑 UNIDADES DE PRODUCTO
+// =======================================
+export async function getProductUnits(productId) {
+  try {
+    const res = await fetch(`${API_URL}/Products/${productId}/units`);
+    if (!res.ok) throw new Error("Error al cargar unidades del producto");
+    const data = await res.json();
+
+    const units = (data.Units ?? data.units ?? [])
+      .map(u => {
+        const prices = (u.Prices ?? u.prices ?? []).map(p => ({
+          id: p.Id ?? p.id,
+          tier: p.Tier ?? p.tier,
+          tierValue: p.TierValue ?? p.tierValue,
+          price: p.Price ?? p.price,
+        }));
+
+        return {
+          id: u.Id ?? u.id,
+          displayName: u.DisplayName ?? u.displayName,
+          unitLabel: u.UnitLabel ?? u.unitLabel,
+          conversionToBase: u.ConversionToBase ?? u.conversionToBase,
+          allowFractionalQuantity: u.AllowFractionalQuantity ?? u.allowFractionalQuantity,
+          minSellStep: u.MinSellStep ?? u.minSellStep,
+          stockDecimals: u.StockDecimals ?? u.stockDecimals,
+          // ✅ CORRECCIÓN: retailPrice siempre desde Tier 0, wholesalePrice desde Tier 1
+          retailPrice:
+            prices.find(p => p.tier === 0)?.price ??
+            u.RetailPrice ?? u.retailPrice ??
+            null,
+          wholesalePrice:
+            prices.find(p => p.tier === 1)?.price ?? null,
+          prices,
+        };
+      })
+      .filter(u => u.retailPrice != null && u.retailPrice > 0);
+
+    return {
+      productId: data.ProductId ?? data.productId,
+      productName: data.ProductName ?? data.productName,
+      units,
+    };
+  } catch (error) {
+    console.error(`❌ Error en getProductUnits(${productId}):`, error.message);
+    return { productId, productName: "", units: [] };
+  }
+}
+
 // =======================================
 // 🗑️ BORRAR ORDEN (SOFT DELETE)
 // =======================================
@@ -780,22 +791,14 @@ export function getFriendlyErrorMessage(error) {
   if (isServerError(error)) {
     return "Error en el servidor. Por favor, contacte al administrador.";
   }
-
   return error?.message || "Error desconocido";
 }
 
 // =======================================
 // 💳 PAYWAY - PAGOS CON TARJETA
 // =======================================
-/**
- * Crear un checkout de Payway para pago con tarjeta
- * @param {Object} data - Datos del checkout
- * @returns {Promise<Object>} - URL de checkout y IDs
- */
 export async function createPaywayCheckout(data) {
   try {
-    // console.log("💳 Creando checkout Payway:", data);
-
     const payload = {
       saleId: Number(data.saleId),
       amount: Number(data.amount),
@@ -810,9 +813,7 @@ export async function createPaywayCheckout(data) {
     };
 
     const result = await request(`${API_URL}/Payway/create-checkout`, "POST", payload, false);
-    // console.log("✅ Checkout Payway creado:", result);
 
-    // aceptar varios nombres comunes que pueda devolver el backend / provider
     const checkoutUrl =
       result?.checkoutUrl ||
       result?.CheckoutUrl ||
@@ -823,30 +824,21 @@ export async function createPaywayCheckout(data) {
       null;
 
     return {
-      checkoutUrl: checkoutUrl,
+      checkoutUrl,
       checkoutId: result?.checkoutId || result?.CheckoutId || result?.checkout_id || null,
       transactionId: result?.transactionId || result?.TransactionId || result?.transaction_id || null,
       raw: result
     };
   } catch (error) {
     console.error("❌ Error en createPaywayCheckout:", error?.message || error);
-    // Si viene estructura del error, intentar propagar mensaje legible
     const msg = error?.message || (error?.details ? `${error.details}` : "Error desconocido");
     throw new Error(`No se pudo crear el checkout: ${msg}`);
   }
 }
 
-/**
- * Verificar el estado de un pago
- * @param {string} transactionId - ID de la transacción
- * @returns {Promise<Object>} - Estado del pago
- */
 export async function getPaymentStatus(transactionId) {
   try {
-    // console.log("🔍 Consultando estado del pago:", transactionId);
-
     const result = await request(`${API_URL}/Payway/payment-status/${transactionId}`, "GET", null, false);
-    // console.log("📊 Estado del pago:", result);
 
     if (!result) return null;
 
@@ -866,17 +858,9 @@ export async function getPaymentStatus(transactionId) {
   }
 }
 
-/**
- * Obtener la transacción/checkout asociada a una venta (saleId)
- * Esta función se agregó para resolver el error: "does not provide an export named 'getTransactionBySale'"
- * Intenta varias rutas posibles en el backend por compatibilidad.
- * @param {number|string} saleId
- * @returns {Promise<Object|null>}
- */
 export async function getTransactionBySale(saleId) {
   if (!saleId) throw new Error("saleId es requerido");
 
-  // endpoints posibles (ajustá si tu backend usa otro path)
   const candidates = [
     `${API_URL}/Payway/transaction-by-sale/${saleId}`,
     `${API_URL}/Payway/transaction?saleId=${saleId}`,
@@ -887,11 +871,9 @@ export async function getTransactionBySale(saleId) {
   let lastErr = null;
   for (const url of candidates) {
     try {
-      // console.log("🔎 Intentando obtener transacción desde:", url);
       const res = await request(url, "GET", null, false);
       if (!res) continue;
 
-      // normalizar campos más comunes
       const txId = res.transactionId || res.TransactionId || res.siteTransactionId || res.SiteTransactionId || res.SiteTransaction_Id || null;
       const checkoutId = res.checkoutId || res.CheckoutId || res.checkout_id || res.Checkout_Id || null;
       const saleIdResp = Number(res.saleId || res.SaleId || res.Sale || saleId);
@@ -910,14 +892,13 @@ export async function getTransactionBySale(saleId) {
     } catch (err) {
       lastErr = err;
       console.warn("⚠️ Intento fallido en", url, err?.message || err);
-      // continuar al siguiente candidato
     }
   }
 
-  // ninguno funcionó -> propagar último error razonable
   console.error("❌ No se pudo obtener transaction by sale. Último error:", lastErr);
   throw lastErr || new Error("No se encontró transacción para la venta indicada.");
 }
+
 // =======================================
 // ⚙️ SETTINGS
 // =======================================
@@ -964,21 +945,21 @@ function getDefaultSettings() {
     shippingCost: 1500,
     deliveryTime: "24-48 horas",
     shippingZones: [
-      { 
-        id: 1, 
-        price: 800, 
+      {
+        id: 1,
+        price: 800,
         label: "Zona 1 - $800",
         localities: ["yerba buena", "san pablo", "el portal"]
       },
-      { 
-        id: 2, 
-        price: 1200, 
+      {
+        id: 2,
+        price: 1200,
         label: "Zona 2 - $1200",
         localities: ["san miguel de tucumán", "san miguel", "centro", "tucumán", "villa carmela", "barrio norte"]
       },
-      { 
-        id: 3, 
-        price: 1800, 
+      {
+        id: 3,
+        price: 1800,
         label: "Zona 3 - $1800",
         localities: ["tafí viejo", "tafi viejo", "banda del río salí", "alderetes", "las talitas"]
       }

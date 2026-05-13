@@ -1,4 +1,3 @@
-// src/admin/widgets/ProductForm.jsx
 import { useEffect, useState } from "react";
 import {
   createProduct,
@@ -20,18 +19,38 @@ async function fetchUnits(productId) {
   const res = await fetch(`${API_URL}/Products/${productId}/units`);
   if (!res.ok) throw new Error("Error al cargar unidades");
   const data = await res.json();
-  // La API devuelve PascalCase → normalizar a camelCase
-  return (data.Units ?? data.units ?? []).map(u => ({
-    id: u.Id ?? u.id,
-    displayName: u.DisplayName ?? u.displayName,
-    unitLabel: u.UnitLabel ?? u.unitLabel,
-    conversionToBase: u.ConversionToBase ?? u.conversionToBase,
-    retailPrice: u.RetailPrice ?? u.retailPrice ?? null,
-    minSellStep: u.MinSellStep ?? u.minSellStep,
-    stockDecimals: u.StockDecimals ?? u.stockDecimals,
-    allowFractionalQuantity: u.AllowFractionalQuantity ?? u.allowFractionalQuantity,
-    barcode: u.Barcode ?? u.barcode ?? "",
-  }));
+
+  return (data.Units ?? data.units ?? []).map(u => {
+    // Normalizar precios por tier
+    const prices = (u.Prices ?? u.prices ?? []).map(p => ({
+      id:        p.Id        ?? p.id,
+      tier:      p.Tier      ?? p.tier,
+      tierValue: p.TierValue ?? p.tierValue,
+      price:     p.Price     ?? p.price,
+    }));
+
+    const retailPrice =
+      prices.find(p => p.tier === 0)?.price ??
+      u.RetailPrice ?? u.retailPrice ?? null;
+
+    const wholesalePrice =
+      prices.find(p => p.tier === 1)?.price ??
+      u.WholesalePrice ?? u.wholesalePrice ?? null;
+
+    return {
+      id:                      u.Id                      ?? u.id,
+      displayName:             u.DisplayName             ?? u.displayName,
+      unitLabel:               u.UnitLabel               ?? u.unitLabel,
+      conversionToBase:        u.ConversionToBase        ?? u.conversionToBase,
+      retailPrice,
+      wholesalePrice,
+      minSellStep:             u.MinSellStep             ?? u.minSellStep,
+      stockDecimals:           u.StockDecimals           ?? u.stockDecimals,
+      allowFractionalQuantity: u.AllowFractionalQuantity ?? u.allowFractionalQuantity,
+      barcode:                 u.Barcode                 ?? u.barcode ?? "",
+      prices,
+    };
+  });
 }
 
 async function saveUnit(productId, unit, isEdit) {
@@ -59,17 +78,17 @@ async function deleteUnit(productId, unitId) {
   if (!res.ok) throw new Error("Error al eliminar unidad");
 }
 
-// ── Formulario vacío de unidad ─────────────────────────────────────
 const emptyUnit = () => ({
-  id: null,
-  displayName: "",
-  unitLabel: "",
-  conversionToBase: 1,
-  retailPrice: "",
-  minSellStep: 1,
-  stockDecimals: 0,
+  id:                      null,
+  displayName:             "",
+  unitLabel:               "",
+  conversionToBase:        1,
+  retailPrice:             "",
+  wholesalePrice:          "",
+  minSellStep:             1,
+  stockDecimals:           0,
   allowFractionalQuantity: false,
-  barcode: "",
+  barcode:                 "",
 });
 
 // ══════════════════════════════════════════════════════════════════
@@ -78,34 +97,36 @@ export default function ProductForm({ product, onClose }) {
 
   // ── General ───────────────────────────────────────────────────
   const [form, setForm] = useState({
-    code: "",
-    name: "",
-    costPrice: "",
-    retailPrice: "",
-    wholesalePrice: "",
-    baseUnit: 2,
+    code:       "",
+    name:       "",
+    costPrice:  "",
+    baseUnit:   2,
     categoryId: "",
-    isActived: true,
+    isActived:  true,
     isFeatured: false,
-    stock: "",
+    stock:      "",
   });
 
-  const [categories, setCategories]           = useState([]);
-  const [images, setImages]                   = useState([]);
-  const [loadingCategories, setLoadingCategories] = useState(false);
-  const [loadingStock, setLoadingStock]       = useState(false);
-  const [saving, setSaving]                   = useState(false);
-  const [uploading, setUploading]             = useState(false);
-  const [error, setError]                     = useState("");
+  const [categories,       setCategories]       = useState([]);
+  const [images,           setImages]           = useState([]);
+  const [loadingCategories,setLoadingCategories] = useState(false);
+  const [loadingStock,     setLoadingStock]     = useState(false);
+  const [saving,           setSaving]           = useState(false);
+  const [uploading,        setUploading]        = useState(false);
+  const [error,            setError]            = useState("");
+
+  // Precios leídos desde unidades (solo informativo en tab General)
+  const [priceFromUnit,     setPriceFromUnit]     = useState(null); // Tier 0
+  const [wholesaleFromUnit, setWholesaleFromUnit] = useState(null); // Tier 1
 
   // ── Unidades ──────────────────────────────────────────────────
-  const [units, setUnits]                     = useState([]);
-  const [loadingUnits, setLoadingUnits]       = useState(false);
-  const [unitForm, setUnitForm]               = useState(emptyUnit());
-  const [editingUnit, setEditingUnit]         = useState(false);
-  const [savingUnit, setSavingUnit]           = useState(false);
-  const [unitError, setUnitError]             = useState("");
-  const [showUnitForm, setShowUnitForm]       = useState(false);
+  const [units,         setUnits]         = useState([]);
+  const [loadingUnits,  setLoadingUnits]  = useState(false);
+  const [unitForm,      setUnitForm]      = useState(emptyUnit());
+  const [editingUnit,   setEditingUnit]   = useState(false);
+  const [savingUnit,    setSavingUnit]    = useState(false);
+  const [unitError,     setUnitError]     = useState("");
+  const [showUnitForm,  setShowUnitForm]  = useState(false);
 
   // ── Cargar datos iniciales ─────────────────────────────────────
   useEffect(() => {
@@ -121,20 +142,18 @@ export default function ProductForm({ product, onClose }) {
 
     if (product) {
       setForm({
-        code:           product.code || "",
-        name:           product.name || "",
-        costPrice:      product.costPrice != null ? String(product.costPrice) : "",
-        retailPrice:    product.retailPrice != null ? String(product.retailPrice) : "",
-        wholesalePrice: product.wholesalePrice != null ? String(product.wholesalePrice) : "",
-        baseUnit:       product.baseUnitId || 2,
-        categoryId:     product.categoryId || "",
-        isActived:      product.isActived ?? true,
-        isFeatured:     product.isFeatured ?? false,
-        stock:          product.stock != null ? String(product.stock) : "",
+        code:       product.code || "",
+        name:       product.name || "",
+        costPrice:  product.costPrice != null ? String(product.costPrice) : "",
+        baseUnit:   product.baseUnitId || 2,
+        categoryId: product.categoryId || "",
+        isActived:  product.isActived ?? true,
+        isFeatured: product.isFeatured ?? false,
+        stock:      "",
       });
       setImages(product.image ? [product.image] : []);
 
-      // Stock
+      // Stock real
       const loadStock = async () => {
         setLoadingStock(true);
         try {
@@ -148,11 +167,13 @@ export default function ProductForm({ product, onClose }) {
       };
       loadStock();
 
-      // Unidades
+      // ✅ Cargar unidades y extraer precios reales (Tier 0 / Tier 1)
       loadUnits(product.id);
     } else {
       setForm(prev => ({ ...prev, baseUnit: 2, isActived: true, isFeatured: false, stock: "" }));
       setImages([]);
+      setPriceFromUnit(null);
+      setWholesaleFromUnit(null);
     }
   }, [product]);
 
@@ -161,11 +182,22 @@ export default function ProductForm({ product, onClose }) {
     try {
       const data = await fetchUnits(productId);
       setUnits(data);
-    } catch { setUnits([]); }
-    finally { setLoadingUnits(false); }
+
+      // Tomar el precio de la primera unidad como referencia para mostrar en General
+      if (data.length > 0) {
+        setPriceFromUnit(data[0].retailPrice);
+        setWholesaleFromUnit(data[0].wholesalePrice);
+      } else {
+        setPriceFromUnit(null);
+        setWholesaleFromUnit(null);
+      }
+    } catch {
+      setUnits([]);
+    } finally {
+      setLoadingUnits(false);
+    }
   }
 
-  // ── Handlers generales ────────────────────────────────────────
   const handleChange = (field, value) =>
     setForm(prev => ({ ...prev, [field]: value }));
 
@@ -194,26 +226,28 @@ export default function ProductForm({ product, onClose }) {
     setImages(prev => prev.filter((_, i) => i !== index));
 
   // ── Submit general ────────────────────────────────────────────
+  // Nota: retailPrice y wholesalePrice ya NO se guardan en el producto,
+  // los precios reales viven en ProductUnitPrices (tab Presentaciones).
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     setError("");
     try {
-      if (!form.name.trim()) throw new Error("El nombre del producto es obligatorio");
-      if (!form.retailPrice || Number(form.retailPrice) <= 0)
-        throw new Error("El precio de venta debe ser mayor a 0");
-      if (!form.categoryId) throw new Error("Selecciona una categoría");
+      if (!form.name.trim())  throw new Error("El nombre del producto es obligatorio");
+      if (!form.categoryId)   throw new Error("Selecciona una categoría");
 
-      const mainImage = images[0] || null;
-      let productId = product?.id || null;
+      const mainImage  = images[0] || null;
+      let   productId  = product?.id || null;
 
       const payload = {
         ...(product ? { id: product.id } : {}),
-        code:           form.code.trim(),
-        name:           form.name.trim(),
-        costPrice:      Number(form.costPrice || 0),
-        retailPrice:    Number(form.retailPrice || 0),
-        wholesalePrice: Number(form.wholesalePrice || 0),
+        code:       form.code.trim(),
+        name:       form.name.trim(),
+        costPrice:  Number(form.costPrice || 0),
+        // Enviamos 0 para retailPrice/wholesalePrice: el precio real está en las unidades.
+        // El backend lo acepta; no lo mostramos al cliente.
+        retailPrice:    0,
+        wholesalePrice: 0,
         baseUnit:       Number(form.baseUnit || 2),
         image:          mainImage,
         categoryId:     Number(form.categoryId),
@@ -252,15 +286,16 @@ export default function ProductForm({ product, onClose }) {
 
   function openEditUnit(unit) {
     setUnitForm({
-      id:                     unit.id,
-      displayName:            unit.displayName,
-      unitLabel:              unit.unitLabel,
-      conversionToBase:       unit.conversionToBase,
-      retailPrice:            unit.retailPrice != null ? String(unit.retailPrice) : "",
-      minSellStep:            unit.minSellStep,
-      stockDecimals:          unit.stockDecimals,
+      id:                      unit.id,
+      displayName:             unit.displayName,
+      unitLabel:               unit.unitLabel,
+      conversionToBase:        unit.conversionToBase,
+      retailPrice:             unit.retailPrice    != null ? String(unit.retailPrice)    : "",
+      wholesalePrice:          unit.wholesalePrice != null ? String(unit.wholesalePrice) : "",
+      minSellStep:             unit.minSellStep,
+      stockDecimals:           unit.stockDecimals,
       allowFractionalQuantity: unit.allowFractionalQuantity,
-      barcode:                unit.barcode || "",
+      barcode:                 unit.barcode || "",
     });
     setEditingUnit(true);
     setUnitError("");
@@ -275,18 +310,19 @@ export default function ProductForm({ product, onClose }) {
     try {
       if (!unitForm.displayName.trim()) throw new Error("El nombre es obligatorio");
       if (!unitForm.retailPrice || Number(unitForm.retailPrice) <= 0)
-        throw new Error("El precio debe ser mayor a 0");
+        throw new Error("El precio minorista debe ser mayor a 0");
 
       const payload = {
         ...(editingUnit ? { id: unitForm.id } : {}),
-        displayName:            unitForm.displayName.trim(),
-        unitLabel:              unitForm.unitLabel.trim() || unitForm.displayName.trim(),
-        conversionToBase:       Number(unitForm.conversionToBase || 1),
-        retailPrice:            Number(unitForm.retailPrice),
-        minSellStep:            Number(unitForm.minSellStep || 1),
-        stockDecimals:          Number(unitForm.stockDecimals || 0),
+        displayName:             unitForm.displayName.trim(),
+        unitLabel:               unitForm.unitLabel.trim() || unitForm.displayName.trim(),
+        conversionToBase:        Number(unitForm.conversionToBase || 1),
+        retailPrice:             Number(unitForm.retailPrice),
+        wholesalePrice:          unitForm.wholesalePrice ? Number(unitForm.wholesalePrice) : null,
+        minSellStep:             Number(unitForm.minSellStep || 1),
+        stockDecimals:           Number(unitForm.stockDecimals || 0),
         allowFractionalQuantity: !!unitForm.allowFractionalQuantity,
-        barcode:                unitForm.barcode || null,
+        barcode:                 unitForm.barcode || null,
       };
 
       await saveUnit(product.id, payload, editingUnit);
@@ -358,36 +394,91 @@ export default function ProductForm({ product, onClose }) {
                 </div>
               )}
               <form onSubmit={handleSubmit} className="space-y-4">
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="block text-sm font-semibold mb-1">Código</label>
-                    <input type="text" className="w-full rounded-lg border px-3 py-2" placeholder="Código" value={form.code} onChange={e => handleChange("code", e.target.value)} />
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border px-3 py-2"
+                      placeholder="Código"
+                      value={form.code}
+                      onChange={e => handleChange("code", e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-1">Nombre del producto</label>
-                    <input type="text" className="w-full rounded-lg border px-3 py-2" placeholder="Nombre" value={form.name} onChange={e => handleChange("name", e.target.value)} required />
+                    <input
+                      type="text"
+                      className="w-full rounded-lg border px-3 py-2"
+                      placeholder="Nombre"
+                      value={form.name}
+                      onChange={e => handleChange("name", e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
 
+                {/* Costo + precios informativos desde unidades */}
                 <div className="grid gap-4 md:grid-cols-3">
                   <div>
                     <label className="block text-sm font-semibold mb-1">Costo</label>
-                    <input type="number" className="w-full rounded-lg border px-3 py-2" placeholder="Costo" value={form.costPrice} onChange={e => handleChange("costPrice", e.target.value.replace(",", "."))} />
+                    <input
+                      type="number"
+                      className="w-full rounded-lg border px-3 py-2"
+                      placeholder="Costo"
+                      value={form.costPrice}
+                      onChange={e => handleChange("costPrice", e.target.value.replace(",", "."))}
+                    />
                   </div>
+
+                  {/* ✅ Precio minorista: solo lectura, viene de Tier 0 de las unidades */}
                   <div>
-                    <label className="block text-sm font-semibold mb-1">Precio venta</label>
-                    <input type="number" className="w-full rounded-lg border px-3 py-2" placeholder="Precio venta" value={form.retailPrice} onChange={e => handleChange("retailPrice", e.target.value.replace(",", "."))} required />
+                    <label className="block text-sm font-semibold mb-1 text-gray-500">
+                      Precio venta
+                      <span className="ml-1 text-xs font-normal text-gray-400">(desde presentaciones)</span>
+                    </label>
+                    <div className={`w-full rounded-lg border px-3 py-2 text-sm ${
+                      priceFromUnit != null ? "bg-gray-50 text-gray-700 font-semibold" : "bg-gray-50 text-gray-400 italic"
+                    }`}>
+                      {priceFromUnit != null
+                        ? `$${Number(priceFromUnit).toLocaleString("es-AR")}`
+                        : product?.id ? "Ver pestaña Presentaciones" : "—"
+                      }
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-1">Mayorista</label>
-                    <input type="number" className="w-full rounded-lg border px-3 py-2" placeholder="Mayorista" value={form.wholesalePrice} onChange={e => handleChange("wholesalePrice", e.target.value.replace(",", "."))} />
-                  </div>
+
+                  {/* ✅ Precio mayorista: solo lectura, viene de Tier 1 de las unidades */}
+                  {/* <div>
+                    <label className="block text-sm font-semibold mb-1 text-gray-500">
+                      Mayorista
+                      <span className="ml-1 text-xs font-normal text-gray-400">(desde presentaciones)</span>
+                    </label>
+                    <div className={`w-full rounded-lg border px-3 py-2 text-sm ${
+                      wholesaleFromUnit != null ? "bg-gray-50 text-gray-700 font-semibold" : "bg-gray-50 text-gray-400 italic"
+                    }`}>
+                      {wholesaleFromUnit != null
+                        ? `$${Number(wholesaleFromUnit).toLocaleString("es-AR")}`
+                        : product?.id ? "Ver pestaña Presentaciones" : "—"
+                      }
+                    </div>
+                  </div> */}
                 </div>
+
+                {product?.id && units.length === 0 && (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
+                    Este producto no tiene presentaciones configuradas. Los precios se editan en la pestaña <strong>Presentaciones</strong>.
+                  </div>
+                )}
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="block text-sm font-semibold mb-1">Unidad base</label>
-                    <select className="w-full rounded-lg border px-3 py-2" value={form.baseUnit} onChange={e => handleChange("baseUnit", Number(e.target.value))}>
+                    <select
+                      className="w-full rounded-lg border px-3 py-2"
+                      value={form.baseUnit}
+                      onChange={e => handleChange("baseUnit", Number(e.target.value))}
+                    >
                       <option value={1}>Kilogramo</option>
                       <option value={2}>Unidad</option>
                       <option value={3}>Litro</option>
@@ -395,22 +486,41 @@ export default function ProductForm({ product, onClose }) {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-1">Categoría</label>
-                    <select className="w-full rounded-lg border px-3 py-2" value={form.categoryId} onChange={e => handleChange("categoryId", Number(e.target.value))} disabled={loadingCategories}>
-                      <option value="">{loadingCategories ? "Cargando..." : "Selecciona una categoría"}</option>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <select
+                      className="w-full rounded-lg border px-3 py-2"
+                      value={form.categoryId}
+                      onChange={e => handleChange("categoryId", Number(e.target.value))}
+                      disabled={loadingCategories}
+                    >
+                      <option value="">
+                        {loadingCategories ? "Cargando..." : "Selecciona una categoría"}
+                      </option>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold mb-1">Stock (sucursal principal)</label>
-                  <input type="number" className="w-full rounded-lg border px-3 py-2" placeholder="Cantidad en stock" value={form.stock} onChange={e => handleChange("stock", e.target.value.replace(",", "."))} />
-                  {loadingStock && <p className="text-xs text-gray-500 mt-1">Cargando stock actual...</p>}
+                  <input
+                    type="number"
+                    className="w-full rounded-lg border px-3 py-2"
+                    placeholder="Cantidad en stock"
+                    value={form.stock}
+                    onChange={e => handleChange("stock", e.target.value.replace(",", "."))}
+                  />
+                  {loadingStock && (
+                    <p className="text-xs text-gray-500 mt-1">Cargando stock actual...</p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold mb-1">Imágenes del producto</label>
-                  <p className="text-xs text-gray-500 mb-2">Se pueden subir varias, pero <strong>solo se guardará una (la primera) en la API</strong>.</p>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Se pueden subir varias, pero <strong>solo se guardará una (la primera) en la API</strong>.
+                  </p>
                   <input type="file" accept="image/*" multiple onChange={handleFilesChange} className="mb-3" />
                   {uploading && <div className="text-sm text-blue-600 mb-2">Subiendo imágenes...</div>}
                   {images.length > 0 && (
@@ -418,8 +528,18 @@ export default function ProductForm({ product, onClose }) {
                       {images.map((url, idx) => (
                         <div key={idx} className="relative rounded-lg overflow-hidden border">
                           <img src={url} alt={`img-${idx}`} className="h-24 w-full object-cover" />
-                          <button type="button" onClick={() => handleRemoveImage(idx)} className="absolute right-1 top-1 rounded-full bg-black/60 px-2 text-xs text-white">✕</button>
-                          {idx === 0 && <span className="absolute left-1 bottom-1 rounded bg-green-600/80 px-2 text-[10px] text-white">Principal</span>}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(idx)}
+                            className="absolute right-1 top-1 rounded-full bg-black/60 px-2 text-xs text-white"
+                          >
+                            ✕
+                          </button>
+                          {idx === 0 && (
+                            <span className="absolute left-1 bottom-1 rounded bg-green-600/80 px-2 text-[10px] text-white">
+                              Principal
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -428,20 +548,45 @@ export default function ProductForm({ product, onClose }) {
 
                 <div className="space-y-3 border-t pt-4">
                   <div className="flex items-center gap-2">
-                    <input id="isActived" type="checkbox" checked={!!form.isActived} onChange={e => handleChange("isActived", e.target.checked)} className="w-4 h-4 text-green-600 rounded" />
+                    <input
+                      id="isActived"
+                      type="checkbox"
+                      checked={!!form.isActived}
+                      onChange={e => handleChange("isActived", e.target.checked)}
+                      className="w-4 h-4 text-green-600 rounded"
+                    />
                     <label htmlFor="isActived" className="text-sm font-semibold">✅ Producto activo</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input id="isFeatured" type="checkbox" checked={!!form.isFeatured} onChange={e => handleChange("isFeatured", e.target.checked)} className="w-4 h-4 text-yellow-600 rounded" />
+                    <input
+                      id="isFeatured"
+                      type="checkbox"
+                      checked={!!form.isFeatured}
+                      onChange={e => handleChange("isFeatured", e.target.checked)}
+                      className="w-4 h-4 text-yellow-600 rounded"
+                    />
                     <label htmlFor="isFeatured" className="text-sm font-semibold">⭐ Producto destacado</label>
                     <span className="text-xs text-gray-500">(aparecerá en la sección destacados del home)</span>
                   </div>
                 </div>
 
                 <div className="mt-4 flex justify-end gap-3">
-                  <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">Cancelar</button>
-                  <button type="submit" disabled={saving} className="rounded-lg px-5 py-2 text-sm font-semibold bg-green-600 text-white hover:bg-green-700 disabled:opacity-60">
-                    {saving ? (product ? "Guardando..." : "Creando...") : (product ? "Guardar cambios" : "Crear producto")}
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-lg px-5 py-2 text-sm font-semibold bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+                  >
+                    {saving
+                      ? (product ? "Guardando..." : "Creando...")
+                      : (product ? "Guardar cambios" : "Crear producto")
+                    }
                   </button>
                 </div>
               </form>
@@ -451,14 +596,12 @@ export default function ProductForm({ product, onClose }) {
           {/* ── TAB UNIDADES ── */}
           {activeTab === "units" && (
             <div className="space-y-4">
-              {/* Aviso si es producto nuevo */}
               {!product?.id && (
                 <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm p-3 rounded-lg">
                   Guardá el producto primero para poder agregar presentaciones.
                 </div>
               )}
 
-              {/* Lista de unidades */}
               {loadingUnits ? (
                 <div className="text-center py-8 text-gray-500">Cargando presentaciones...</div>
               ) : units.length === 0 ? (
@@ -472,24 +615,46 @@ export default function ProductForm({ product, onClose }) {
                     <div key={unit.id} className="flex items-center justify-between bg-gray-50 rounded-xl p-4">
                       <div>
                         <p className="font-bold text-[#1C1C1C]">{unit.displayName}</p>
-                        <p className="text-sm text-gray-500">{unit.unitLabel} · {unit.conversionToBase} kg</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <p className="font-bold text-[#F24C00] text-lg">
-                          {unit.retailPrice != null
-                            ? `$${Number(unit.retailPrice).toLocaleString("es-AR")}`
-                            : <span className="text-gray-400 text-sm">Sin precio</span>
-                          }
+                        <p className="text-sm text-gray-500">
+                          {unit.unitLabel} · conversión: {unit.conversionToBase}
                         </p>
-                        <button onClick={() => openEditUnit(unit)} className="p-2 border rounded hover:bg-white transition">✎</button>
-                        <button onClick={() => handleDeleteUnit(unit.id)} className="p-2 border rounded text-red-600 hover:bg-red-50 transition">🗑</button>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right">
+                          <p className="text-xs text-gray-400 mb-0.5">Minorista</p>
+                          <p className="font-bold text-[#F24C00] text-lg">
+                            {unit.retailPrice != null
+                              ? `$${Number(unit.retailPrice).toLocaleString("es-AR")}`
+                              : <span className="text-gray-400 text-sm">Sin precio</span>
+                            }
+                          </p>
+                        </div>
+                        {unit.wholesalePrice != null && (
+                          <div className="text-right">
+                            <p className="text-xs text-gray-400 mb-0.5">Mayorista</p>
+                            <p className="font-semibold text-gray-600">
+                              ${Number(unit.wholesalePrice).toLocaleString("es-AR")}
+                            </p>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => openEditUnit(unit)}
+                          className="p-2 border rounded hover:bg-white transition"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUnit(unit.id)}
+                          className="p-2 border rounded text-red-600 hover:bg-red-50 transition"
+                        >
+                          🗑
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Botón agregar */}
               {product?.id && !showUnitForm && (
                 <button
                   type="button"
@@ -500,9 +665,11 @@ export default function ProductForm({ product, onClose }) {
                 </button>
               )}
 
-              {/* Formulario de unidad */}
               {showUnitForm && (
-                <form onSubmit={handleSaveUnit} className="bg-[#FFF4EF] border border-[#F24C00]/30 rounded-xl p-5 space-y-4">
+                <form
+                  onSubmit={handleSaveUnit}
+                  className="bg-[#FFF4EF] border border-[#F24C00]/30 rounded-xl p-5 space-y-4"
+                >
                   <h4 className="font-bold text-[#1C1C1C]">
                     {editingUnit ? "Editar presentación" : "Nueva presentación"}
                   </h4>
@@ -515,7 +682,9 @@ export default function ProductForm({ product, onClose }) {
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="block text-sm font-semibold mb-1">Nombre <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-semibold mb-1">
+                        Nombre <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="text"
                         className="w-full rounded-lg border px-3 py-2"
@@ -539,25 +708,52 @@ export default function ProductForm({ product, onClose }) {
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="block text-sm font-semibold mb-1">Precio minorista <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-semibold mb-1">
+                        Precio minorista <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="number"
                         className="w-full rounded-lg border px-3 py-2"
-                        placeholder="Ej: 2000"
+                        placeholder="Ej: 62500"
                         value={unitForm.retailPrice}
                         onChange={e => setUnitForm(p => ({ ...p, retailPrice: e.target.value }))}
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold mb-1">Conversión a base (kg)</label>
+                      <label className="block text-sm font-semibold mb-1">
+                        Precio mayorista (Tier 1)
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="Ej: 57500 (opcional)"
+                        value={unitForm.wholesalePrice}
+                        onChange={e => setUnitForm(p => ({ ...p, wholesalePrice: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-semibold mb-1">Conversión a base</label>
                       <input
                         type="number"
                         step="0.001"
                         className="w-full rounded-lg border px-3 py-2"
-                        placeholder="Ej: 20 para bolsa de 20kg, 1 para 1kg, 0.1 para 100g"
+                        placeholder="Ej: 20 para bolsa de 20kg"
                         value={unitForm.conversionToBase}
                         onChange={e => setUnitForm(p => ({ ...p, conversionToBase: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-1">Código de barras</label>
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="Opcional"
+                        value={unitForm.barcode}
+                        onChange={e => setUnitForm(p => ({ ...p, barcode: e.target.value }))}
                       />
                     </div>
                   </div>

@@ -4,8 +4,32 @@ import {
   deleteProduct,
   getProductStock,
 } from "../services/apiService";
-import { sendLowStockNotification, sendMultipleLowStockNotification } from '../services/whatsappService';
+import { sendLowStockNotification, sendMultipleLowStockNotification } from "../services/whatsappService";
 import ProductForm from "../widgets/ProductFrom";
+
+const API_URL = "https://forrajeria-jovita-api.onrender.com/api";
+
+async function fetchUnits(productId) {
+  const res = await fetch(`${API_URL}/Products/${productId}/units`);
+  if (!res.ok) return [];
+
+  const data = await res.json();
+  return (data.Units ?? data.units ?? []).map((u) => {
+    const prices = (u.Prices ?? u.prices ?? []).map((p) => ({
+      tier: p.Tier ?? p.tier,
+      price: p.Price ?? p.price,
+    }));
+
+    return {
+      conversionToBase: u.ConversionToBase ?? u.conversionToBase,
+      retailPrice:
+        prices.find((p) => p.tier === 0)?.price ??
+        u.RetailPrice ??
+        u.retailPrice ??
+        null,
+    };
+  });
+}
 
 export default function Products() {
   const [products, setProducts] = useState([]);
@@ -15,6 +39,7 @@ export default function Products() {
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [pricesMap, setPricesMap] = useState({});
 
   // ==================================================
   // 🔄 Cargar productos + stock REAL por sucursal
@@ -32,10 +57,7 @@ export default function Products() {
 
             // stockList = [{ branchId, quantity, lastUpdated }]
             const totalStock = Array.isArray(stockList)
-              ? stockList.reduce(
-                  (acc, s) => acc + Number(s.quantity || 0),
-                  0
-                )
+              ? stockList.reduce((acc, s) => acc + Number(s.quantity || 0), 0)
               : 0;
 
             return {
@@ -51,6 +73,20 @@ export default function Products() {
           }
         })
       );
+
+      const prices = {};
+      await Promise.all(
+        productsWithStock.map(async (p) => {
+          try {
+            const units = await fetchUnits(p.id);
+            const baseUnit = units.find((u) => Number(u.conversionToBase) === 1);
+            prices[p.id] = baseUnit?.retailPrice ?? null;
+          } catch {
+            prices[p.id] = null;
+          }
+        })
+      );
+      setPricesMap(prices);
 
       // Ordenar por nombre
       productsWithStock.sort((a, b) => a.name.localeCompare(b.name));
@@ -73,30 +109,30 @@ export default function Products() {
   // ==================================================
   useEffect(() => {
     const checkLowStock = () => {
-      const settings = JSON.parse(localStorage.getItem('jovita_settings_v1') || '{}');
-      
+      const settings = JSON.parse(localStorage.getItem("jovita_settings_v1") || "{}");
+
       if (!settings.whatsappNewOrder || products.length === 0) return;
 
-      const lowStockProducts = products.filter(p => {
+      const lowStockProducts = products.filter((p) => {
         const minStock = p.minStock || 10;
         return p.stock > 0 && p.stock <= minStock;
       });
 
-      const outOfStockProducts = products.filter(p => p.stock === 0);
+      const outOfStockProducts = products.filter((p) => p.stock === 0);
 
       if (lowStockProducts.length > 0 || outOfStockProducts.length > 0) {
-        const lastNotification = localStorage.getItem('last_stock_notification');
+        const lastNotification = localStorage.getItem("last_stock_notification");
         const now = Date.now();
-        
+
         // Solo notificar una vez cada 24 horas
-        if (!lastNotification || (now - parseInt(lastNotification)) > 24 * 60 * 60 * 1000) {
+        if (!lastNotification || now - parseInt(lastNotification) > 24 * 60 * 60 * 1000) {
           const allProblematic = [...lowStockProducts, ...outOfStockProducts];
-          
+
           console.log(`📱 ${allProblematic.length} productos con problemas de stock detectados`);
           // No enviar automáticamente, solo loguear
           // La notificación se enviará manualmente con el botón
-          
-          localStorage.setItem('last_stock_notification', now.toString());
+
+          localStorage.setItem("last_stock_notification", now.toString());
         }
       }
     };
@@ -154,7 +190,7 @@ export default function Products() {
   // ==================================================
   // 📊 Contar productos con stock bajo
   // ==================================================
-  const lowStockCount = filtered.filter(p => {
+  const lowStockCount = filtered.filter((p) => {
     const minStock = p.minStock || 10;
     return p.stock <= minStock;
   }).length;
@@ -174,13 +210,13 @@ export default function Products() {
             <button
               onClick={() => {
                 const minStockDefault = 10;
-                const lowStock = filtered.filter(p => {
+                const lowStock = filtered.filter((p) => {
                   const minStock = p.minStock || minStockDefault;
                   return p.stock <= minStock && p.stock > 0;
                 });
-                const noStock = filtered.filter(p => p.stock === 0);
+                const noStock = filtered.filter((p) => p.stock === 0);
                 const all = [...lowStock, ...noStock];
-                
+
                 if (all.length === 1) {
                   sendLowStockNotification(all[0]);
                 } else if (all.length > 1) {
@@ -193,7 +229,7 @@ export default function Products() {
               <span>Avisar Stock Bajo ({lowStockCount})</span>
             </button>
           )}
-          
+
           <button
             onClick={() => {
               setEditing(null);
@@ -260,7 +296,9 @@ export default function Products() {
 
               <div className="flex items-center gap-6">
                 <div className="font-bold">
-                  ${(p.retailPrice ?? 0).toLocaleString("es-AR")}
+                  {pricesMap[p.id] != null
+                    ? `$${Number(pricesMap[p.id]).toLocaleString("es-AR")}`
+                    : "$0"}
                 </div>
 
                 {/* 🔥 STOCK REAL */}
