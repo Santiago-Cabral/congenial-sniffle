@@ -1,10 +1,10 @@
-import { useLocation, Link } from "react-router-dom";
-import { useProducts } from "../Context/ProductsContext"; // 👈 Importar el contexto
+import { useLocation } from "react-router-dom";
+import { useProducts } from "../Context/ProductsContext";
 import ProductCard from "./ProductCard";
 
 export default function FeaturedProducts() {
-  const { products, loading } = useProducts(); // 👈 Usar el contexto
-  
+  const { products, loading, loadingMore, hasMore, loadMore } = useProducts();
+
   const location = useLocation();
   const categoryFilter = new URLSearchParams(location.search).get("category");
 
@@ -33,11 +33,25 @@ export default function FeaturedProducts() {
         {filteredProducts.length === 0 ? (
           <p className="text-center">No hay productos disponibles.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredProducts.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {filteredProducts.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+
+            {!categoryFilter && hasMore && (
+              <div className="flex justify-center mt-10">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="px-8 py-3 bg-[#F24C00] text-white font-bold rounded-full hover:bg-[#d94300] transition-colors disabled:opacity-60"
+                >
+                  {loadingMore ? "Cargando..." : "Cargar más productos"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>
