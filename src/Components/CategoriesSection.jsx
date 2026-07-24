@@ -1,25 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Pill,
-  Apple,
-  HeartPulse,
-  Leaf,
-  Droplet,
-  Coffee,
-  Package,
-  Wheat,
-  Cat,
-  PawPrint,
+  Pill, Apple, HeartPulse, Leaf, Droplet, Coffee, Package, Wheat, Cat, PawPrint,
 } from "lucide-react";
-import { useProducts } from "../Context/ProductsContext";
 
 const normalize = (str = "") =>
-  str
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
+  str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
 const iconByCategoryName = (name = "") => {
   const n = normalize(name);
@@ -49,27 +35,19 @@ const imageByCategoryName = (name = "") => {
 };
 
 export default function CategoriesSection() {
-  const { products, loading } = useProducts();
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const categories = useMemo(() => {
-    const map = new Map();
-    if (!products || products.length === 0) return [];
+  useEffect(() => {
+    fetch("https://forrajeria-jovita-api.onrender.com/api/Categories/with-counts")
+      .then((res) => res.json())
+      .then((data) => setCategories(Array.isArray(data) ? data : []))
+      .catch((err) => console.error("❌ Error cargando categorías", err))
+      .finally(() => setLoading(false));
+  }, []);
 
-    products.forEach((p) => {
-      // Usamos las propiedades normalizadas por el Context/mapProduct
-      const name = p.categoryName || "Otros";
-
-      if (!map.has(name)) {
-        map.set(name, { title: name, count: 0 });
-      }
-      map.get(name).count += 1;
-    });
-
-    return Array.from(map.values());
-  }, [products]);
-
-  if (loading) return null; // O un spinner pequeño
+  if (loading) return null;
 
   return (
     <section className="bg-white py-16" id="categorias">
@@ -87,9 +65,7 @@ export default function CategoriesSection() {
               <button
                 key={idx}
                 type="button"
-                onClick={() =>
-                  navigate(`/products?category=${encodeURIComponent(cat.title)}`)
-                }
+                onClick={() => navigate(`/products?category=${encodeURIComponent(cat.title)}`)}
                 className="group relative h-56 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition"
               >
                 <img
@@ -98,11 +74,8 @@ export default function CategoriesSection() {
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />
-
                 <div className="relative z-10 h-full flex flex-col items-center justify-center text-white text-center px-4">
-                  <div className="mb-3">
-                    <Icon size={36} strokeWidth={2.5} />
-                  </div>
+                  <div className="mb-3"><Icon size={36} strokeWidth={2.5} /></div>
                   <h3 className="text-xl font-extrabold mb-1">{cat.title}</h3>
                   <p className="text-sm opacity-90">{cat.count} productos</p>
                 </div>
