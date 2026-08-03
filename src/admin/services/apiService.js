@@ -287,6 +287,7 @@ function mapSale(s) {
     customerDetails,
     clientName: rawCustomer || "",
     paymentMethod: s.PaymentMethod ?? s.paymentMethod ?? "",
+    saleChannel: (s.SaleChannel ?? s.saleChannel ?? "local").toLowerCase(),
     fulfillmentMethod:
       s.FulfillmentMethod ?? s.fulfillmentMethod ?? "delivery",
   };
