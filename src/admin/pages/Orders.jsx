@@ -36,31 +36,39 @@ function getStatusInfo(order) {
   }
 }
 
+// El backend serializa en PascalCase (SaleChannel), soportamos ambos casings
+function getChannel(order) {
+  const raw = order?.saleChannel ?? order?.SaleChannel ?? "local";
+  return String(raw).toLowerCase();
+}
+
+function getChannelInfo(order) {
+  const channel = getChannel(order);
+  return channel === "web"
+    ? { label: "Web", className: "bg-purple-100 text-purple-800" }
+    : { label: "Local", className: "bg-gray-100 text-gray-700" };
+}
+
 function extractDisplayName(order) {
   if (!order) return "Orden";
 
-  // 1. customerDetails.name
   if (order.customerDetails && order.customerDetails.name && order.customerDetails.name.trim()) return order.customerDetails.name.trim();
 
-  // 2. common fields
   const tryFields = ["clientName", "client_name", "Customer", "customerName", "CustomerName", "fullName", "FullName", "name", "Name"];
   for (const f of tryFields) {
     if (order[f] && typeof order[f] === "string" && order[f].trim()) return order[f].trim();
   }
 
-  // 3. delivery / shipping fields
   const tryAddress = ["deliveryAddress", "DeliveryAddress", "address", "Address", "shippingAddress", "shipping_address"];
   for (const f of tryAddress) {
     const v = order[f];
     if (v && typeof v === "string" && v.trim()) return v.trim();
-    // si viene objeto con street/line1
     if (v && typeof v === "object") {
       const composed = (v.line1 || v.street || v.address || v.addressLine || v.streetAddress || "") + " " + (v.line2 || v.number || "");
       if (composed.trim()) return composed.trim();
     }
   }
 
-  // 4. externalData (JSON)
   const rawExt = order.externalData || order.ExternalData || order.external_data || null;
   if (rawExt) {
     try {
@@ -76,14 +84,12 @@ function extractDisplayName(order) {
     }
   }
 
-  // intentar mostrar email o teléfono antes que "Cliente"
   const tryEmail = (order.customerDetails?.email || order.email || order.clientEmail || order.client_email) ?? null;
   const tryPhone = (order.customerDetails?.phone || order.phone || order.mobile || order.phoneNumber || order.phone_number) ?? null;
 
   if (tryEmail && typeof tryEmail === "string" && tryEmail.trim()) return tryEmail.trim();
   if (tryPhone && typeof tryPhone === "string" && tryPhone.trim()) return tryPhone.trim();
 
-  // fallback más informativo
   return order.customerName?.trim() || order.clientName?.trim() || `Orden #${order.id}`;
 }
 
@@ -96,6 +102,7 @@ export default function OrdersPage() {
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [channelFilter, setChannelFilter] = useState("ALL"); // ALL | web | local
 
   async function load(showReloadSpinner = false) {
     showReloadSpinner ? setLoadingReload(true) : setLoading(true);
@@ -136,10 +143,13 @@ export default function OrdersPage() {
       result = result.filter((o) => getStatusInfo(o).code === Number(statusFilter));
     }
 
-    setFiltered(result);
-  }, [search, statusFilter, orders]);
+    if (channelFilter !== "ALL") {
+      result = result.filter((o) => getChannel(o) === channelFilter);
+    }
 
-  // Actualiza el estado local cuando el modal cambia el estado de la orden
+    setFiltered(result);
+  }, [search, statusFilter, channelFilter, orders]);
+
   const handleStatusChange = (id, newStatusCode, updatedFromApi) => {
     setOrders((prev) =>
       prev.map((o) =>
@@ -203,7 +213,7 @@ export default function OrdersPage() {
         </button>
       </div>
 
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-wrap gap-3 mb-4 items-center">
         <div className="relative flex-1 max-w-md">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input className="w-full pl-9 py-2 border rounded-xl" placeholder="Buscar por orden o cliente" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -211,6 +221,14 @@ export default function OrdersPage() {
 
         {[{ code: "ALL", label: "Todos" }, { code: "0", label: "Pendiente" }, { code: "1", label: "Pagado" }, { code: "2", label: "Entregado" }].map((f) => (
           <button key={f.code} onClick={() => setStatusFilter(f.code)} className={`px-3 py-1 rounded-full border text-sm ${statusFilter === f.code ? "bg-[#F24C00] text-white" : "bg-white"}`}>
+            {f.label}
+          </button>
+        ))}
+
+        <span className="w-px h-6 bg-gray-300 mx-1" />
+
+        {[{ code: "ALL", label: "Todos los canales" }, { code: "web", label: "Web" }, { code: "local", label: "Local" }].map((f) => (
+          <button key={f.code} onClick={() => setChannelFilter(f.code)} className={`px-3 py-1 rounded-full border text-sm ${channelFilter === f.code ? "bg-purple-600 text-white" : "bg-white"}`}>
             {f.label}
           </button>
         ))}
@@ -222,9 +240,10 @@ export default function OrdersPage() {
         ) : (
           filtered.map((o) => {
             const status = getStatusInfo(o);
+            const channel = getChannelInfo(o);
             const displayName = extractDisplayName(o);
             return (
-              <div key={o.id} className="grid grid-cols-5 gap-4 px-6 py-4 border-b">
+              <div key={o.id} className="grid grid-cols-6 gap-4 px-6 py-4 border-b items-center">
                 <div>
                   <div className="font-semibold">#{o.id}</div>
                   <span className={`text-xs px-2 rounded ${status.className}`}>{status.label}</span>
@@ -232,6 +251,9 @@ export default function OrdersPage() {
 
                 <div>{formatDate(o.soldAt || o.createdAt)}</div>
                 <div>{displayName}</div>
+                <div>
+                  <span className={`text-xs px-2 py-0.5 rounded ${channel.className}`}>{channel.label}</span>
+                </div>
                 <div className="text-right font-bold text-[#F24C00]">${formatMoney(o.total)}</div>
 
                 <div className="text-right">
