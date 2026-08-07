@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Store, Truck, CreditCard, Bell, Save, Plus, Trash2, MapPin, X } from "lucide-react";
 import { useSettings } from "../../Context/SettingContext";
+import CouponsAdmin from "./Couponsadmin";
 
 export default function SettingsPage() {
   const {
@@ -417,6 +418,9 @@ export default function SettingsPage() {
             <p className="text-sm text-[#5A564E]">Configura los métodos de pago disponibles</p>
           </div>
         </div>
+        
+          <CouponsAdmin/>
+      
 
         <div className="space-y-4">
           {/* Efectivo */}

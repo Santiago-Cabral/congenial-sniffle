@@ -315,7 +315,72 @@ export async function login(email, password) {
     throw new Error(`No se pudo iniciar sesión: ${error.message}`);
   }
 }
+// =======================================
+// 🎟️ CUPONES — agregar estas funciones a apiService.js
+// (usa el mismo helper `request` que ya tenés en el archivo)
+// =======================================
 
+function mapCoupon(c) {
+  if (!c) return null;
+  return {
+    id: c.Id ?? c.id,
+    code: c.Code ?? c.code ?? "",
+    type: Number(c.Type ?? c.type ?? 0), // 0 = Percentage, 1 = Fixed
+    typeName: c.TypeName ?? c.typeName ?? "",
+    value: Number(c.Value ?? c.value ?? 0),
+    minPurchase: c.MinPurchase ?? c.minPurchase ?? null,
+    maxUses: c.MaxUses ?? c.maxUses ?? null,
+    usedCount: Number(c.UsedCount ?? c.usedCount ?? 0),
+    expirationDate: c.ExpirationDate ?? c.expirationDate ?? null,
+    isActive: c.IsActive ?? c.isActive ?? true,
+    creationDate: c.CreationDate ?? c.creationDate ?? null,
+  };
+}
+
+export async function listCoupons() {
+  try {
+    const data = await request(`${API_URL}/Coupons`, "GET", null, true);
+    return (Array.isArray(data) ? data : []).map(mapCoupon);
+  } catch (error) {
+    console.error("❌ Error en listCoupons:", error.message);
+    return [];
+  }
+}
+
+export async function createCoupon(body) {
+  // body: { code, type, value, minPurchase, maxUses, expirationDate, isActive }
+  const result = await request(`${API_URL}/Coupons`, "POST", body, true);
+  return mapCoupon(result);
+}
+
+export async function updateCoupon(id, body) {
+  return request(`${API_URL}/Coupons/${id}`, "PUT", { ...body, id }, true);
+}
+
+export async function deleteCoupon(id) {
+  return request(`${API_URL}/Coupons/${id}`, "DELETE", null, true);
+}
+
+// Checkout público: valida el código contra el total del carrito
+export async function validateCoupon(code, cartTotal) {
+  try {
+    const result = await request(
+      `${API_URL}/Coupons/validate`,
+      "POST",
+      { code, cartTotal: Number(cartTotal) },
+      false
+    );
+    return {
+      valid: result?.Valid ?? result?.valid ?? false,
+      message: result?.Message ?? result?.message ?? "",
+      discountAmount: Number(result?.DiscountAmount ?? result?.discountAmount ?? 0),
+      couponCode: result?.CouponCode ?? result?.couponCode ?? "",
+    };
+  } catch (error) {
+    console.error("❌ Error en validateCoupon:", error.message);
+    return { valid: false, message: "No se pudo validar el cupón", discountAmount: 0, couponCode: "" };
+  }
+}
 // =======================================
 // 📦 PRODUCTOS
 // =======================================

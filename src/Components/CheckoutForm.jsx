@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { createPublicSale, createPaywayCheckout } from "../admin/services/apiService";
+import { createPublicSale, createPaywayCheckout, validateCoupon } from "../admin/services/apiService";
 import { useCart } from "../Context/CartContext";
 import { useSettings } from "../Context/SettingContext";
 
@@ -31,6 +31,12 @@ export default function CheckoutForm({ onClose }) {
   const [error, setError] = useState("");
   const [fulfillmentMethod, setFulfillmentMethod] = useState("delivery");
 
+  // ⭐ Estado del cupón
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discountAmount }
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
+
   useEffect(() => {
     if (!settings) return;
     setConfig({
@@ -41,7 +47,6 @@ export default function CheckoutForm({ onClose }) {
       accountHolder: settings.accountHolder || "Forrajería Jovita S.R.L."
     });
 
-    // ⭐ Establecer el método de pago por defecto según lo habilitado
     if (!paymentMethod) {
       if (settings.bankTransfer) {
         setPaymentMethod("transfer");
@@ -53,7 +58,6 @@ export default function CheckoutForm({ onClose }) {
     }
   }, [settings, paymentMethod]);
 
-  // ⭐ Calcular envío automáticamente cuando cambia la dirección
   useEffect(() => {
     if (fulfillmentMethod === "pickup") {
       setShippingCost(0);
@@ -69,7 +73,7 @@ export default function CheckoutForm({ onClose }) {
     }
 
     const result = calculateShippingCost(customer.address);
-    
+
     if (result.error) {
       setError(result.error);
       setShippingCost(0);
@@ -80,6 +84,57 @@ export default function CheckoutForm({ onClose }) {
       setError("");
     }
   }, [customer.address, fulfillmentMethod, calculateShippingCost]);
+
+  useEffect(() => {
+    if (appliedCoupon) {
+      setAppliedCoupon(null);
+      setCouponError("El carrito cambió, volvé a aplicar el cupón.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total]);
+
+  const discountAmount = appliedCoupon?.discountAmount ? Number(appliedCoupon.discountAmount) : 0;
+
+  const handleApplyCoupon = async () => {
+    setCouponError("");
+
+    if (!couponCode || !couponCode.trim()) {
+      setCouponError("Ingresá un código de cupón.");
+      return;
+    }
+
+    if (!cart || cart.length === 0) {
+      setCouponError("El carrito está vacío.");
+      return;
+    }
+
+    setCouponLoading(true);
+    try {
+      // ⭐ FIX: validateCoupon(code, cartTotal) recibe argumentos posicionales, no un objeto
+      const result = await validateCoupon(couponCode.trim().toUpperCase(), Number(total));
+
+      if (!result || result.valid === false) {
+        throw new Error(result?.message || "Cupón inválido o vencido.");
+      }
+
+      setAppliedCoupon({
+        code: result.couponCode || couponCode.trim().toUpperCase(),
+        discountAmount: Number(result.discountAmount ?? 0)
+      });
+    } catch (err) {
+      console.error("❌ Error al validar cupón:", err);
+      setAppliedCoupon(null);
+      setCouponError(err?.message || "No se pudo validar el cupón.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+  };
 
   const buildPayload = () => {
     const items = (cart || []).map(it => ({
@@ -95,6 +150,7 @@ export default function CheckoutForm({ onClose }) {
       paymentMethod: String(paymentMethod),
       paymentReference: String(paymentReference || "Pedido Web"),
       fulfillmentMethod: fulfillmentMethod,
+      couponCode: appliedCoupon?.code || null,
       customerDetails: {
         name: customer.name,
         phone: customer.phone,
@@ -113,15 +169,11 @@ export default function CheckoutForm({ onClose }) {
         throw new Error("Ingresá un email válido para el pago con tarjeta");
       }
 
-      // console.log("💳 [PAYWAY] Iniciando flujo de pago con tarjeta...");
-
       const payload = buildPayload();
       const sale = await createPublicSale(payload);
 
       const saleId = sale?.id ?? sale?.Id ?? sale?.saleId ?? null;
       const totalAmount = Number(sale?.total ?? sale?.Total ?? sale?.amount ?? 0);
-
-      // console.log("✅ [PAYWAY] Venta creada:", { saleId, totalAmount });
 
       if (!saleId || totalAmount <= 0) {
         throw new Error("Error al crear la venta. Intente nuevamente.");
@@ -137,32 +189,18 @@ export default function CheckoutForm({ onClose }) {
         }
       };
 
-      // console.log("📦 [PAYWAY] Solicitando checkout:", paywayData);
-
       const checkout = await createPaywayCheckout(paywayData);
-
-      // console.log("✅ [PAYWAY] Checkout recibido:", checkout);
 
       if (checkout?.transactionId) {
         sessionStorage.setItem("payway_tx_id", checkout.transactionId);
         sessionStorage.setItem("payway_tx_timestamp", Date.now().toString());
         sessionStorage.setItem("payway_sale_id", saleId.toString());
         sessionStorage.setItem("payway_amount", totalAmount.toString());
-        
-        console.log("💾 [PAYWAY] Datos guardados en sessionStorage:", {
-          transactionId: checkout.transactionId,
-          saleId,
-          amount: totalAmount
-        });
-      } else {
-        console.warn("⚠️ [PAYWAY] No se recibió transactionId en la respuesta");
       }
 
       if (!checkout?.checkoutUrl) {
         throw new Error("No se recibió la URL de pago. Intente nuevamente.");
       }
-
-      console.log("🔗 [PAYWAY] Redirigiendo a:", checkout.checkoutUrl);
 
       setTimeout(() => {
         window.location.href = checkout.checkoutUrl;
@@ -170,9 +208,9 @@ export default function CheckoutForm({ onClose }) {
 
     } catch (err) {
       console.error("❌ [PAYWAY] Error en flujo de pago:", err);
-      
+
       let errorMessage = "Error al procesar el pago. ";
-      
+
       if (err.message.includes("Venta")) {
         errorMessage += "No se pudo registrar la venta.";
       } else if (err.message.includes("checkout")) {
@@ -182,7 +220,7 @@ export default function CheckoutForm({ onClose }) {
       } else {
         errorMessage += err.message || "Intente nuevamente.";
       }
-      
+
       setError(errorMessage);
       setLoading(false);
     }
@@ -202,7 +240,6 @@ export default function CheckoutForm({ onClose }) {
       return;
     }
 
-    // ⭐ Validar que haya un método de pago seleccionado
     if (!paymentMethod) {
       setError("Seleccioná un método de pago.");
       return;
@@ -266,7 +303,7 @@ export default function CheckoutForm({ onClose }) {
             Te contactaremos pronto para coordinar la entrega
           </p>
         </div>
-        
+
         <div className="flex gap-2 mt-4">
           <button
             className="flex-1 px-4 py-3 rounded-lg bg-[#F24C00] text-white font-semibold hover:bg-[#D94000]"
@@ -282,8 +319,8 @@ export default function CheckoutForm({ onClose }) {
     );
   }
 
-  // ⭐ Verificar si hay al menos un método de pago habilitado
   const hasPaymentMethods = settings?.cash || settings?.bankTransfer || settings?.cards;
+  const finalTotal = Math.max(0, total - discountAmount) + shippingCost;
 
   return (
     <form onSubmit={handleSubmit} className="mt-4 space-y-4">
@@ -294,7 +331,6 @@ export default function CheckoutForm({ onClose }) {
         </div>
       )}
 
-      {/* ⭐ Advertencia si no hay métodos de pago habilitados */}
       {!hasPaymentMethods && (
         <div className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 flex items-start gap-2">
           <span className="text-lg">⚠️</span>
@@ -432,14 +468,60 @@ export default function CheckoutForm({ onClose }) {
         </div>
       )}
 
-      {/* ⭐ MÉTODOS DE PAGO - SOLO MOSTRAR LOS HABILITADOS */}
+      {/* ⭐ CUPÓN DE DESCUENTO */}
+      <div className="p-4 rounded-lg bg-gray-50 border">
+        <label className="text-sm font-semibold text-gray-700 mb-3 block">
+          Cupón de descuento
+        </label>
+
+        {!appliedCoupon ? (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Ingresá tu código"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              disabled={couponLoading}
+              className="flex-1 p-3 rounded-lg border focus:ring-2 focus:ring-[#F24C00] focus:border-[#F24C00] outline-none disabled:bg-gray-100"
+            />
+            <button
+              type="button"
+              onClick={handleApplyCoupon}
+              disabled={couponLoading || !couponCode.trim()}
+              className="px-4 py-3 rounded-lg bg-[#1C1C1C] text-white font-semibold hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {couponLoading ? "Validando..." : "Aplicar"}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 border border-green-200">
+            <div>
+              <p className="text-sm font-bold text-green-800">✓ {appliedCoupon.code}</p>
+              <p className="text-xs text-green-700">
+                Descuento aplicado: ${discountAmount.toLocaleString()}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleRemoveCoupon}
+              className="text-xs font-semibold text-red-600 hover:text-red-800 underline"
+            >
+              Quitar
+            </button>
+          </div>
+        )}
+
+        {couponError && (
+          <p className="text-xs text-red-600 mt-2">{couponError}</p>
+        )}
+      </div>
+
       {hasPaymentMethods && (
         <div className="space-y-3">
           <label className="text-sm font-semibold text-gray-700 block">
             Método de pago
           </label>
           <div className="grid grid-cols-2 gap-2">
-            {/* ⭐ Mostrar efectivo solo si está habilitado */}
             {settings.cash && (
               <button
                 type="button"
@@ -454,7 +536,6 @@ export default function CheckoutForm({ onClose }) {
               </button>
             )}
 
-            {/* ⭐ Mostrar transferencia solo si está habilitada */}
             {settings.bankTransfer && (
               <button
                 type="button"
@@ -469,7 +550,6 @@ export default function CheckoutForm({ onClose }) {
               </button>
             )}
 
-            {/* ⭐ Mostrar tarjeta solo si está habilitada */}
             {settings.cards && (
               <button
                 type="button"
@@ -487,7 +567,6 @@ export default function CheckoutForm({ onClose }) {
             )}
           </div>
 
-          {/* Info de transferencia */}
           {paymentMethod === "transfer" && settings.bankTransfer && (
             <div className="mt-3 p-4 rounded-lg bg-blue-50 border border-blue-200 space-y-2">
               <h4 className="font-bold text-blue-900 flex items-center gap-2">
@@ -517,7 +596,6 @@ export default function CheckoutForm({ onClose }) {
             </div>
           )}
 
-          {/* Info de pago con tarjeta */}
           {paymentMethod === "card" && settings.cards && (
             <div className="mt-3 p-4 rounded-lg bg-purple-50 border border-purple-200">
               <h4 className="font-bold text-purple-900 mb-3 flex items-center gap-2">
@@ -545,7 +623,6 @@ export default function CheckoutForm({ onClose }) {
         </div>
       )}
 
-      {/* Referencia de pago (solo para métodos tradicionales) */}
       {paymentMethod !== "card" && paymentMethod && (
         <input
           placeholder="Referencia de pago (opcional)"
@@ -564,6 +641,15 @@ export default function CheckoutForm({ onClose }) {
           </span>
         </div>
 
+        {appliedCoupon && discountAmount > 0 && (
+          <div className="flex justify-between items-center text-green-700">
+            <span>Descuento ({appliedCoupon.code})</span>
+            <span className="font-bold">
+              -${discountAmount.toLocaleString()}
+            </span>
+          </div>
+        )}
+
         <div className="flex justify-between items-center text-gray-600">
           <span>Envío</span>
           <span className="font-bold text-gray-900">
@@ -576,15 +662,14 @@ export default function CheckoutForm({ onClose }) {
         <div className="flex justify-between items-center pt-2 border-t">
           <span className="text-xl font-bold text-gray-900">Total</span>
           <span className="text-2xl font-extrabold text-[#F24C00]">
-            ${(total + shippingCost).toLocaleString()}
+            ${finalTotal.toLocaleString()}
           </span>
         </div>
       </div>
 
-      {/* Botón de envío */}
       <button
         type="submit"
-        disabled={loading || !hasPaymentMethods}
+        disabled={loading || !hasPaymentMethods || couponLoading}
         className="w-full py-4 rounded-xl bg-[#F24C00] text-white font-bold text-lg shadow-lg hover:bg-[#D94000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {loading ? (
@@ -596,12 +681,11 @@ export default function CheckoutForm({ onClose }) {
           <>
             {paymentMethod === "card" ? "🔒 Pagar con tarjeta" : "Confirmar pedido"}
             {" - $"}
-            {(total + shippingCost).toLocaleString()}
+            {finalTotal.toLocaleString()}
           </>
         )}
       </button>
 
-      {/* Disclaimer de seguridad para pago con tarjeta */}
       {paymentMethod === "card" && (
         <p className="text-xs text-center text-gray-500">
           🔐 Tus datos de pago son procesados de forma segura. No almacenamos información de tarjetas.
