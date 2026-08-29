@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { listOrders, deleteOrder } from "../services/apiService";
 import OrderDetailsModal from "../widgets/OrderDetailsModal";
-import { RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search, Truck, Package, CreditCard, Phone } from "lucide-react";
 
 function formatMoney(value) {
   const n = Number(value) || 0;
@@ -42,11 +42,21 @@ function getChannel(order) {
   return String(raw).toLowerCase();
 }
 
-function getChannelInfo(order) {
-  const channel = getChannel(order);
-  return channel === "web"
-    ? { label: "Web", className: "bg-purple-100 text-purple-800" }
-    : { label: "Local", className: "bg-gray-100 text-gray-700" };
+function getFulfillmentInfo(order) {
+  const fm = order?.fulfillmentMethod;
+  const normalized =
+    typeof fm === "string" ? fm.toLowerCase() : fm === 2 ? "pickup" : "delivery";
+  return normalized === "pickup"
+    ? { label: "Retiro en local", icon: Package }
+    : { label: "Envío a domicilio", icon: Truck };
+}
+
+function getPaymentLabel(method) {
+  const m = String(method || "").toLowerCase();
+  if (m === "cash") return "Efectivo";
+  if (m === "transfer") return "Transferencia";
+  if (m === "card") return "Tarjeta";
+  return method || "No especificado";
 }
 
 function extractDisplayName(order) {
@@ -93,6 +103,16 @@ function extractDisplayName(order) {
   return order.customerName?.trim() || order.clientName?.trim() || `Orden #${order.id}`;
 }
 
+function extractPhone(order) {
+  return (
+    order.customerDetails?.phone?.trim() ||
+    order.phone ||
+    order.mobile ||
+    order.phoneNumber ||
+    ""
+  );
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -102,7 +122,6 @@ export default function OrdersPage() {
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [channelFilter, setChannelFilter] = useState("ALL"); // ALL | web | local
 
   async function load(showReloadSpinner = false) {
     showReloadSpinner ? setLoadingReload(true) : setLoading(true);
@@ -110,7 +129,11 @@ export default function OrdersPage() {
 
     try {
       const data = await listOrders();
-      const ordered = [...data].sort((a, b) => new Date(b.soldAt || b.createdAt) - new Date(a.soldAt || a.createdAt));
+      // ⭐ Solo canal web
+      const webOnly = data.filter((o) => getChannel(o) === "web");
+      const ordered = [...webOnly].sort(
+        (a, b) => new Date(b.soldAt || b.createdAt) - new Date(a.soldAt || a.createdAt)
+      );
       setOrders(ordered);
       setFiltered(ordered);
     } catch (err) {
@@ -135,7 +158,8 @@ export default function OrdersPage() {
         const idMatch = String(o.id).includes(q);
         const name = (o.customerDetails?.name || o.clientName || o.deliveryAddress || "") + "";
         const display = name.toLowerCase();
-        return idMatch || display.includes(q) || (String(o.email || "").toLowerCase().includes(q)) || (String(o.phone || "").toLowerCase().includes(q));
+        const phone = extractPhone(o).toLowerCase();
+        return idMatch || display.includes(q) || phone.includes(q) || (String(o.email || "").toLowerCase().includes(q));
       });
     }
 
@@ -143,12 +167,8 @@ export default function OrdersPage() {
       result = result.filter((o) => getStatusInfo(o).code === Number(statusFilter));
     }
 
-    if (channelFilter !== "ALL") {
-      result = result.filter((o) => getChannel(o) === channelFilter);
-    }
-
     setFiltered(result);
-  }, [search, statusFilter, channelFilter, orders]);
+  }, [search, statusFilter, orders]);
 
   const handleStatusChange = (id, newStatusCode, updatedFromApi) => {
     setOrders((prev) =>
@@ -191,7 +211,7 @@ export default function OrdersPage() {
   if (loading && !loadingReload) {
     return (
       <div className="p-6">
-        <h2 className="text-3xl font-bold mb-4">Órdenes</h2>
+        <h2 className="text-3xl font-bold mb-4">Órdenes Web</h2>
         <div className="bg-white rounded-xl shadow p-6">
           <p>Cargando órdenes...</p>
         </div>
@@ -203,8 +223,8 @@ export default function OrdersPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-3xl font-bold">Órdenes</h2>
-          <p className="text-gray-500">Historial de ventas</p>
+          <h2 className="text-3xl font-bold">Órdenes Web</h2>
+          <p className="text-gray-500">Pedidos realizados desde la tienda online</p>
         </div>
 
         <button onClick={() => load(true)} className="flex items-center gap-2 px-4 py-2 border rounded-xl bg-white shadow-sm">
@@ -213,10 +233,16 @@ export default function OrdersPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {error}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3 mb-4 items-center">
         <div className="relative flex-1 max-w-md">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input className="w-full pl-9 py-2 border rounded-xl" placeholder="Buscar por orden o cliente" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className="w-full pl-9 py-2 border rounded-xl" placeholder="Buscar por orden, cliente o teléfono" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
 
         {[{ code: "ALL", label: "Todos" }, { code: "0", label: "Pendiente" }, { code: "1", label: "Pagado" }, { code: "2", label: "Entregado" }].map((f) => (
@@ -225,41 +251,68 @@ export default function OrdersPage() {
           </button>
         ))}
 
-        <span className="w-px h-6 bg-gray-300 mx-1" />
-
-        {[{ code: "ALL", label: "Todos los canales" }, { code: "web", label: "Web" }, { code: "local", label: "Local" }].map((f) => (
-          <button key={f.code} onClick={() => setChannelFilter(f.code)} className={`px-3 py-1 rounded-full border text-sm ${channelFilter === f.code ? "bg-purple-600 text-white" : "bg-white"}`}>
-            {f.label}
-          </button>
-        ))}
+        <span className="ml-auto text-sm text-gray-500">
+          {filtered.length} orden{filtered.length === 1 ? "" : "es"}
+        </span>
       </div>
 
-      <div className="bg-white rounded-2xl shadow overflow-hidden">
+      <div className="space-y-3">
         {filtered.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">No hay órdenes</div>
+          <div className="bg-white rounded-2xl shadow p-10 text-center text-gray-500">
+            No hay órdenes web que coincidan con el filtro.
+          </div>
         ) : (
           filtered.map((o) => {
             const status = getStatusInfo(o);
-            const channel = getChannelInfo(o);
             const displayName = extractDisplayName(o);
+            const phone = extractPhone(o);
+            const fulfillment = getFulfillmentInfo(o);
+            const FulfillmentIcon = fulfillment.icon;
+
             return (
-              <div key={o.id} className="grid grid-cols-6 gap-4 px-6 py-4 border-b items-center">
-                <div>
-                  <div className="font-semibold">#{o.id}</div>
-                  <span className={`text-xs px-2 rounded ${status.className}`}>{status.label}</span>
-                </div>
+              <button
+                key={o.id}
+                onClick={() => setSelected(o)}
+                className="w-full text-left bg-white rounded-2xl shadow-sm hover:shadow-md border border-gray-100 hover:border-gray-200 transition p-5"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  {/* Izquierda: orden + cliente */}
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className="bg-[#F24C00] bg-opacity-10 w-11 h-11 rounded-full flex items-center justify-center text-[#F24C00] font-bold text-sm shrink-0">
+                      #{o.id}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-gray-900 truncate">{displayName}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${status.className}`}>
+                          {status.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">{formatDate(o.soldAt || o.createdAt)}</p>
 
-                <div>{formatDate(o.soldAt || o.createdAt)}</div>
-                <div>{displayName}</div>
-                <div>
-                  <span className={`text-xs px-2 py-0.5 rounded ${channel.className}`}>{channel.label}</span>
-                </div>
-                <div className="text-right font-bold text-[#F24C00]">${formatMoney(o.total)}</div>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-600">
+                        {phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone size={12} /> {phone}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <FulfillmentIcon size={12} /> {fulfillment.label}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <CreditCard size={12} /> {getPaymentLabel(o.paymentMethod)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="text-right">
-                  <button className="text-blue-600 text-sm" onClick={() => setSelected(o)}>Ver</button>
+                  {/* Derecha: total */}
+                  <div className="text-right shrink-0">
+                    <p className="font-extrabold text-lg text-[#F24C00]">${formatMoney(o.total)}</p>
+                    <span className="text-xs text-blue-600 font-semibold">Ver detalle →</span>
+                  </div>
                 </div>
-              </div>
+              </button>
             );
           })
         )}

@@ -12,7 +12,8 @@ import Branches from "./pages/Branches";
 import Categories from "./pages/Categories";
 import SettingPage from "./pages/SettingPage";
 
-import ProtectedRoute from "../Components/ProtectedRoute.jsx";  // ✅ RUTA CORRECTA
+import ProtectedRoute from "../Components/ProtectedRoute.jsx";
+import RoleRoute, { ROLE_ADMIN, ROLE_EMPLEADO } from "../Components/RoleRoute.jsx";
 
 export default function AppAdmin() {
   return (
@@ -27,13 +28,65 @@ export default function AppAdmin() {
           <ProtectedRoute>
             <AdminLayout>
               <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="productos" element={<Products />} />
-                <Route path="ordenes" element={<Orders />} />
-                <Route path="clientes" element={<Clients />} />
-                <Route path="sucursales" element={<Branches />} />
-                <Route path="categorias" element={<Categories />} />
-                <Route path="configuracion" element={<SettingPage />} />
+                {/* Dashboard y Órdenes: admin + empleado (cajero) */}
+                <Route
+                  path="/"
+                  element={
+                    <RoleRoute allowedRoles={[ROLE_ADMIN, ROLE_EMPLEADO]}>
+                      <Dashboard />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="ordenes"
+                  element={
+                    <RoleRoute allowedRoles={[ROLE_ADMIN, ROLE_EMPLEADO]}>
+                      <Orders />
+                    </RoleRoute>
+                  }
+                />
+
+                {/* Resto: solo admin */}
+                <Route
+                  path="productos"
+                  element={
+                    <RoleRoute allowedRoles={[ROLE_ADMIN]}>
+                      <Products />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="clientes"
+                  element={
+                    <RoleRoute allowedRoles={[ROLE_ADMIN]}>
+                      <Clients />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="sucursales"
+                  element={
+                    <RoleRoute allowedRoles={[ROLE_ADMIN]}>
+                      <Branches />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="categorias"
+                  element={
+                    <RoleRoute allowedRoles={[ROLE_ADMIN]}>
+                      <Categories />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="configuracion"
+                  element={
+                    <RoleRoute allowedRoles={[ROLE_ADMIN]}>
+                      <SettingPage />
+                    </RoleRoute>
+                  }
+                />
               </Routes>
             </AdminLayout>
           </ProtectedRoute>

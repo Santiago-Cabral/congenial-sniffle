@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ShoppingCart, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCart } from "../Context/CartContext";
-import { getProduct } from "../admin/services/apiService";
-import { getProductUnits } from "../admin/services/productUnitService";
+import { useProducts } from "../Context/ProductsContext";
 import fotoDefault from "../../public/sin-foto.png";
 
 const SUPABASE_PUBLIC_URL = import.meta.env.VITE_SUPABASE_PUBLIC_URL;
@@ -16,29 +15,19 @@ function getProductImageUrl(image) {
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
-  const [fullProduct, setFullProduct] = useState(null);
+  const { unitsMap } = useProducts();
   const [addedToCart, setAddedToCart] = useState(false);
-  const [hasUnits, setHasUnits] = useState(false);
 
-  useEffect(() => {
-    if (!product?.id) return;
+  const p = product || {};
+  const id = p.id;
 
-    // Cargar detalle del producto
-    getProduct(product.id)
-      .then(setFullProduct)
-      .catch(() => {});
+  // ⭐ Precio y cantidad de presentaciones vienen del mapa cargado UNA vez
+  // en ProductsContext (endpoint /Products/all-with-units), no de un fetch por card.
+  const unitInfo = unitsMap[id];
+  const price = Number(unitInfo?.retailPrice ?? p.retailPrice ?? 0);
+  const hasUnits = (unitInfo?.unitCount ?? 1) > 1;
 
-    // Verificar si tiene unidades con precio > 0
-    getProductUnits(product.id)
-      .then(data => setHasUnits((data.units ?? []).length > 0))
-      .catch(() => setHasUnits(false));
-  }, [product?.id]);
-
-  const p = fullProduct || product || {};
-
-  const id          = p.id;
   const name        = p.name || "Producto";
-  const price       = Number(p.retailPrice ?? 0);
   const stock       = Number(p.stock ?? 0);
   const category    = p.categoryName;
   const isAvailable = p.isActived && stock > 0;
@@ -46,7 +35,7 @@ export default function ProductCard({ product }) {
 
   const handleAdd = () => {
     if (!isAvailable) return;
-    addToCart(p, 1);
+    addToCart({ ...p, retailPrice: price }, 1);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 1500);
   };

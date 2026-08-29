@@ -8,22 +8,36 @@ import {
   LogOut, 
   Building2,
   WalletCards
-  
 } from "lucide-react";
+import { ROLE_ADMIN, ROLE_EMPLEADO } from "../../Components/RoleRoute";
 
 const menuItems = [
-  { path: "/admin", icon: LayoutDashboard, label: "Dashboard", exact: true },
-  { path: "/admin/productos", icon: Package, label: "Productos" },
-  { path: "/admin/ordenes", icon: ShoppingCart, label: "Órdenes" },
-  { path: "/admin/categorias", icon: WalletCards, label: "Categorías" },
-  { path: "/admin/clientes", icon: Users, label: "Clientes" },
-  { path: "/admin/sucursales", icon: Building2, label: "Sucursales" },
-  { path: "/admin/configuracion", icon: Settings, label: "Configuración" }
+  { path: "/admin", icon: LayoutDashboard, label: "Dashboard", exact: true, roles: [ROLE_ADMIN, ROLE_EMPLEADO] },
+  { path: "/admin/ordenes", icon: ShoppingCart, label: "Órdenes", roles: [ROLE_ADMIN, ROLE_EMPLEADO] },
+  { path: "/admin/productos", icon: Package, label: "Productos", roles: [ROLE_ADMIN] },
+  { path: "/admin/categorias", icon: WalletCards, label: "Categorías", roles: [ROLE_ADMIN] },
+  { path: "/admin/clientes", icon: Users, label: "Clientes", roles: [ROLE_ADMIN] },
+  { path: "/admin/sucursales", icon: Building2, label: "Sucursales", roles: [ROLE_ADMIN] },
+  { path: "/admin/configuracion", icon: Settings, label: "Configuración", roles: [ROLE_ADMIN] }
 ];
+
+function getCurrentUser() {
+  try {
+    return JSON.parse(localStorage.getItem("admin_user") || "{}");
+  } catch {
+    return {};
+  }
+}
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+
+  const user = getCurrentUser();
+  const role = (user.role || "").toLowerCase();
+  const isEmpleado = role === ROLE_EMPLEADO;
+
+  const visibleItems = menuItems.filter(item => item.roles.includes(role));
 
   const isActive = (path, exact) => {
     if (exact) {
@@ -48,14 +62,16 @@ export default function Sidebar() {
         <img src="/logo-jovita.png" alt="Jovita" className="w-10 h-10 rounded-full" />
         <div>
           <h2 className="font-bold text-lg text-[#1C1C1C]">Jovita Admin</h2>
-          <p className="text-xs text-[#5A564E]">Panel de Control</p>
+          <p className="text-xs text-[#5A564E]">
+            {isEmpleado ? "Panel de Empleado" : "Panel de Control"}
+          </p>
         </div>
       </div>
 
       {/* Menu Items */}
       <nav className="flex-1 py-6 px-4 overflow-y-auto">
         <ul className="space-y-2">
-          {menuItems.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path, item.exact);
 
@@ -83,11 +99,17 @@ export default function Sidebar() {
         <div className="bg-red-50 rounded-xl p-4 mb-3">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full bg-red-200 flex items-center justify-center">
-              <span className="text-red-700 font-bold text-lg">A</span>
+              <span className="text-red-700 font-bold text-lg">
+                {isEmpleado ? "E" : "A"}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-[#1C1C1C] text-sm truncate">Administrador</p>
-              <p className="text-xs text-[#5A564E] truncate">admin@jovita.com</p>
+              <p className="font-bold text-[#1C1C1C] text-sm truncate">
+                {isEmpleado ? (user.name || "Empleado") : "Administrador"}
+              </p>
+              <p className="text-xs text-[#5A564E] truncate">
+                {user.email || "admin@jovita.com"}
+              </p>
             </div>
           </div>
           <button

@@ -554,7 +554,7 @@ export default function SettingsPage() {
             <p className="font-semibold text-green-900">Número de WhatsApp configurado</p>
           </div>
           <p className="text-sm text-green-700">
-            Las notificaciones se enviarán a: <span className="font-bold">+54 9 381 4669135</span>
+            Las notificaciones se enviarán a: <span className="font-bold">+54 9 381 4669136</span>
           </p>
           <p className="text-xs text-green-600 mt-1">
             💡 Las notificaciones abrirán WhatsApp automáticamente con el mensaje preparado

@@ -3,6 +3,7 @@ import { mapProduct } from "../admin/services/apiService";
 
 const ProductsContext = createContext();
 const PAGE_SIZE = 50;
+const API_URL = "https://forrajeria-jovita-api.onrender.com/api";
 
 export function useProducts() {
   const ctx = useContext(ProductsContext);
@@ -17,6 +18,11 @@ export function ProductsProvider({ children }) {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
+  // ⭐ Precio real + cantidad de presentaciones, para TODO el catálogo, en una sola llamada.
+  // Reemplaza los fetches individuales que hacía cada ProductCard.
+  const [unitsMap, setUnitsMap] = useState({});
+  const [unitsMapLoaded, setUnitsMapLoaded] = useState(false);
+
   const hasMore = products.length < totalCount;
 
   const fetchPage = useCallback(async (pageToFetch, { append }) => {
@@ -25,7 +31,7 @@ export function ProductsProvider({ children }) {
       else setLoading(true);
 
       const res = await fetch(
-        `https://forrajeria-jovita-api.onrender.com/api/Products?page=${pageToFetch}&pageSize=${PAGE_SIZE}`
+        `${API_URL}/Products?page=${pageToFetch}&pageSize=${PAGE_SIZE}`
       );
       const data = await res.json();
 
@@ -43,9 +49,33 @@ export function ProductsProvider({ children }) {
     }
   }, []);
 
+  const fetchUnitsMap = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/Products/all-with-units`);
+      const data = await res.json();
+
+      const map = {};
+      (Array.isArray(data) ? data : []).forEach((p) => {
+        const id = p.Id ?? p.id;
+        if (id == null) return;
+        map[id] = {
+          retailPrice: Number(p.BaseRetailPrice ?? p.baseRetailPrice ?? 0),
+          unitCount: Number(p.UnitCount ?? p.unitCount ?? 1),
+        };
+      });
+
+      setUnitsMap(map);
+    } catch (err) {
+      console.error("❌ Error cargando precios del catálogo", err);
+    } finally {
+      setUnitsMapLoaded(true);
+    }
+  }, []);
+
   useEffect(() => {
     fetchPage(1, { append: false });
-  }, [fetchPage]);
+    fetchUnitsMap();
+  }, [fetchPage, fetchUnitsMap]);
 
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
@@ -54,7 +84,16 @@ export function ProductsProvider({ children }) {
 
   return (
     <ProductsContext.Provider
-      value={{ products, loading, loadingMore, hasMore, totalCount, loadMore }}
+      value={{
+        products,
+        loading,
+        loadingMore,
+        hasMore,
+        totalCount,
+        loadMore,
+        unitsMap,
+        unitsMapLoaded,
+      }}
     >
       {children}
     </ProductsContext.Provider>

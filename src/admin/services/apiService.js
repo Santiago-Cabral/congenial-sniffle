@@ -100,7 +100,6 @@ async function request(url, method = "GET", body = null, auth = false) {
       const parsed = JSON.parse(text);
       return parsed;
     } catch (parseError) {
-      // console.error("❌ Error parsing JSON response:", parseError, text);
       throw new Error("Respuesta del servidor en formato inválido");
     }
   } catch (error) {
@@ -306,7 +305,10 @@ export async function login(email, password) {
       localStorage.setItem("admin_user", JSON.stringify({
         ...data,
         token: token,
-        role: (data.Role || data.role || "").toLowerCase()
+        // ⭐ El rol viaja como string desde el backend (ej. "administrador/a", "empleado")
+        // y ya está firmado dentro del JWT (ClaimTypes.Role). Esto es solo para la UI;
+        // el control de acceso real lo hace el backend leyendo el token.
+        role: (data.Role || data.role || "").toString().toLowerCase()
       }));
     }
     return data;
@@ -316,8 +318,7 @@ export async function login(email, password) {
   }
 }
 // =======================================
-// 🎟️ CUPONES — agregar estas funciones a apiService.js
-// (usa el mismo helper `request` que ya tenés en el archivo)
+// 🎟️ CUPONES
 // =======================================
 
 function mapCoupon(c) {
@@ -348,7 +349,6 @@ export async function listCoupons() {
 }
 
 export async function createCoupon(body) {
-  // body: { code, type, value, minPurchase, maxUses, expirationDate, isActive }
   const result = await request(`${API_URL}/Coupons`, "POST", body, true);
   return mapCoupon(result);
 }
@@ -361,7 +361,6 @@ export async function deleteCoupon(id) {
   return request(`${API_URL}/Coupons/${id}`, "DELETE", null, true);
 }
 
-// Checkout público: valida el código contra el total del carrito
 export async function validateCoupon(code, cartTotal) {
   try {
     const result = await request(
@@ -796,7 +795,6 @@ export async function getProductUnits(productId) {
           allowFractionalQuantity: u.AllowFractionalQuantity ?? u.allowFractionalQuantity,
           minSellStep: u.MinSellStep ?? u.minSellStep,
           stockDecimals: u.StockDecimals ?? u.stockDecimals,
-          // ✅ CORRECCIÓN: retailPrice siempre desde Tier 0, wholesalePrice desde Tier 1
           retailPrice:
             prices.find(p => p.tier === 0)?.price ??
             u.RetailPrice ?? u.retailPrice ??
