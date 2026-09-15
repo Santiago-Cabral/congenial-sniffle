@@ -394,7 +394,17 @@ export async function listProducts() {
     return [];
   }
 }
-
+export async function searchProducts(term) {
+  try {
+    const params = new URLSearchParams({ search: term });
+    const data = await request(`${API_URL}/Products?${params.toString()}`, "GET", null, false);
+    const mapped = (Array.isArray(data) ? data : []).map(mapProduct);
+    return mapped.filter(p => !p.isDeleted);
+  } catch (error) {
+    console.error("❌ Error en searchProducts:", error.message);
+    return [];
+  }
+}
 export async function getProduct(id) {
   try {
     const p = await request(`${API_URL}/Products/${id}`, "GET", null, false);
@@ -859,7 +869,8 @@ export function getFriendlyErrorMessage(error) {
 }
 
 // =======================================
-// 💳 PAYWAY - PAGOS CON TARJETA
+// 💳 MERCADO PAGO - PAGOS CON TARJETA
+// (antes apuntaba a /Payway/..., que ya no existe en el backend)
 // =======================================
 export async function createPaywayCheckout(data) {
   try {
@@ -867,16 +878,18 @@ export async function createPaywayCheckout(data) {
       saleId: Number(data.saleId),
       amount: Number(data.amount),
       description: String(data.description || `Pedido #${data.saleId} - Forrajería Jovita`),
+      externalReference: String(data.externalReference ?? data.saleId ?? ""),
       customer: {
         name: String(data.customer?.name || ""),
         email: String(data.customer?.email || `${data.customer?.phone}@temp.com`),
         phone: String(data.customer?.phone || "")
       },
-      returnUrl: String(data.returnUrl || `${window.location.origin}/payment/success`),
-      cancelUrl: String(data.cancelUrl || `${window.location.origin}/payment/cancel`)
+      returnUrl: String(data.returnUrl || `${window.location.origin}/payment/success?sale=${data.saleId}`),
+      cancelUrl: String(data.cancelUrl || `${window.location.origin}/payment/cancel?sale=${data.saleId}`)
     };
 
-    const result = await request(`${API_URL}/Payway/create-checkout`, "POST", payload, false);
+    // ✅ FIX: antes era `${API_URL}/Payway/create-checkout` (ruta que ya no existe)
+    const result = await request(`${API_URL}/MercadoPago/create-checkout`, "POST", payload, false);
 
     const checkoutUrl =
       result?.checkoutUrl ||
@@ -902,7 +915,8 @@ export async function createPaywayCheckout(data) {
 
 export async function getPaymentStatus(transactionId) {
   try {
-    const result = await request(`${API_URL}/Payway/payment-status/${transactionId}`, "GET", null, false);
+    // ✅ FIX: antes era `${API_URL}/Payway/payment-status/${transactionId}` (ruta que ya no existe)
+    const result = await request(`${API_URL}/MercadoPago/payment-status/${transactionId}`, "GET", null, false);
 
     if (!result) return null;
 
@@ -922,6 +936,10 @@ export async function getPaymentStatus(transactionId) {
   }
 }
 
+// ⚠️ PENDIENTE: esta función todavía apunta a rutas /Payway/... que no existen
+// en el backend actual. La dejé sin tocar porque no confirmamos si algo la usa.
+// Si el panel admin la llama, avisame y armamos el endpoint equivalente en
+// MercadoPagoController (GET /api/MercadoPago/transaction-by-sale/{saleId}).
 export async function getTransactionBySale(saleId) {
   if (!saleId) throw new Error("saleId es requerido");
 

@@ -25,6 +25,7 @@ import { useProducts } from "./Context/ProductsContext";
 import Error404 from "./pages/Error404";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
+import CheckoutPage from "./pages/Checkout";
 
 function ProtectedClientRoute({ children }) {
   const { isAuthenticated } = useUserAuth();
@@ -119,6 +120,7 @@ export default function App() {
 
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
 
           {/* LOGIN */}
           <Route path="/login" element={<UserLoginPage />} />

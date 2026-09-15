@@ -89,6 +89,7 @@ export default function Checkout() {
         saleId,
         amount,
         description: `Pedido #${saleId} - Forrajería Jovita`,
+        externalReference: String(saleId),
         customer: {
           name: form.name,
           email: form.email || `${form.phone}@temp.com`,
@@ -102,11 +103,13 @@ export default function Checkout() {
 
       const checkoutUrl = checkout?.checkoutUrl ?? checkout?.CheckoutUrl ?? checkout?.url ?? checkout?.raw?.checkoutUrl;
 
-      // guardar transactionId antes de redirect
+      // guardar transactionId antes de redirect (claves mp_*, leídas por PaymentSuccess)
       if (checkout?.transactionId) {
-        sessionStorage.setItem("payway_transactionId", String(checkout.transactionId));
+        sessionStorage.setItem("mp_tx_id", String(checkout.transactionId));
+        sessionStorage.setItem("mp_tx_timestamp", String(Date.now()));
+        sessionStorage.setItem("mp_sale_id", String(saleId));
       } else if (checkout?.checkoutId) {
-        sessionStorage.setItem("payway_checkoutId", String(checkout.checkoutId));
+        sessionStorage.setItem("mp_checkoutId", String(checkout.checkoutId));
       }
 
       if (!checkoutUrl) {

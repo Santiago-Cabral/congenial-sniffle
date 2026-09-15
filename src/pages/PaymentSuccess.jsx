@@ -21,42 +21,62 @@ export default function PaymentSuccess() {
     try {
       console.log("🔍 [PAYMENT-SUCCESS] Validando pago...");
 
-      // ===== 1. OBTENER DATOS DE SESSIONSTORAGE =====
-      const storedTxId = sessionStorage.getItem("payway_tx_id");
-      const storedTimestamp = sessionStorage.getItem("payway_tx_timestamp");
-      const storedSaleId = sessionStorage.getItem("payway_sale_id");
-      const storedAmount = sessionStorage.getItem("payway_amount");
+      // ===== 1. PARÁMETROS QUE MERCADO PAGO DEVUELVE EN LA URL =====
+      // Checkout Pro redirige a returnUrl con: external_reference, payment_id, status, merchant_order_id
+      const urlExternalRef = searchParams.get("external_reference") || searchParams.get("sale") || "";
+      const urlPaymentId = searchParams.get("payment_id") || searchParams.get("collection_id") || "";
+      const urlStatus = (searchParams.get("status") || "").toLowerCase();
 
-      console.log("📦 [PAYMENT-SUCCESS] Datos almacenados:", {
-        storedTxId,
-        storedSaleId,
-        storedAmount,
-        timestamp: storedTimestamp
+      // ===== 2. FALLBACK A SESSIONSTORAGE (mp_*) =====
+      const storedTxId = sessionStorage.getItem("mp_tx_id");
+      const storedTimestamp = sessionStorage.getItem("mp_tx_timestamp");
+      const storedSaleId = sessionStorage.getItem("mp_sale_id");
+      const storedAmount = sessionStorage.getItem("mp_amount");
+
+      const transactionId = urlPaymentId || storedTxId;
+      const saleId = urlExternalRef || storedSaleId || "";
+      const amount = storedAmount;
+      const timestamp = storedTimestamp ? parseInt(storedTimestamp || "0") : 0;
+
+      console.log("📦 [PAYMENT-SUCCESS] Datos de la transacción:", {
+        transactionId,
+        saleId,
+        amount,
+        urlStatus
       });
 
-      // ===== 2. VALIDAR QUE EXISTAN LOS DATOS =====
-      if (!storedTxId) {
-        console.error("❌ [PAYMENT-SUCCESS] No se encontró transactionId en sessionStorage");
+      // ===== 3. VALIDAR QUE EXISTA EL ID DE PAGO =====
+      if (!transactionId) {
+        console.error("❌ [PAYMENT-SUCCESS] No se obtuvo payment_id ni transactionId");
         setStatus("error");
         setError("No se pudo verificar el pago. Por favor contacte a soporte.");
         return;
       }
 
-      // ===== 3. VALIDAR TIEMPO DE EXPIRACIÓN (30 minutos) =====
-      const timestamp = parseInt(storedTimestamp || "0");
-      const age = Date.now() - timestamp;
-      const maxAge = 30 * 60 * 1000; // 30 minutos
+      // ===== 4. VALIDAR TIEMPO DE EXPIRACIÓN (30 minutos) =====
+      if (timestamp) {
+        const age = Date.now() - timestamp;
+        const maxAge = 30 * 60 * 1000; // 30 minutos
 
-      if (age > maxAge) {
-        console.warn("⏰ [PAYMENT-SUCCESS] Sesión expirada");
-        setStatus("expired");
-        setError("La sesión de pago ha expirado. Por favor contacte a soporte.");
+        if (age > maxAge) {
+          console.warn("⏰ [PAYMENT-SUCCESS] Sesión expirada");
+          setStatus("expired");
+          setError("La sesión de pago ha expirado. Por favor contacte a soporte.");
+          return;
+        }
+      }
+
+      // ===== 5. PRE-VALIDAR SEGÚN EL STATUS DEVUELTO POR MP =====
+      if (urlStatus === "failure" || urlStatus === "rejected" || urlStatus === "cancelled" || urlStatus === "aborted") {
+        console.error("❌ [PAYMENT-SUCCESS] MP indica pago rechazado (URL):", urlStatus);
+        setStatus("error");
+        setError("El pago fue rechazado. Podés intentar nuevamente o elegir otro medio de pago.");
         return;
       }
 
-      // ===== 4. CONSULTAR ESTADO REAL A LA API =====
+      // ===== 6. CONSULTAR ESTADO REAL A LA API =====
       console.log("🌐 [PAYMENT-SUCCESS] Consultando estado a la API...");
-      
+
       let paymentStatus;
       let attempts = 0;
       const maxAttempts = 3;
@@ -64,8 +84,8 @@ export default function PaymentSuccess() {
       // Reintentar hasta 3 veces con delay (por si el webhook aún no llegó)
       while (attempts < maxAttempts) {
         try {
-          paymentStatus = await getPaymentStatus(storedTxId);
-          
+          paymentStatus = await getPaymentStatus(transactionId);
+
           if (paymentStatus && paymentStatus.status) {
             break; // Éxito, salir del loop
           }
@@ -91,16 +111,16 @@ export default function PaymentSuccess() {
 
       console.log("✅ [PAYMENT-SUCCESS] Estado recibido:", paymentStatus);
 
-      // ===== 5. VERIFICAR ESTADO DEL PAGO =====
+      // ===== 7. VERIFICAR ESTADO DEL PAGO =====
       const normalizedStatus = (paymentStatus.status || "").toLowerCase();
 
       if (normalizedStatus === "approved") {
         // ✅ PAGO APROBADO
         setStatus("success");
         setPaymentData({
-          transactionId: storedTxId,
-          saleId: storedSaleId,
-          amount: storedAmount,
+          transactionId: paymentStatus.transactionId || transactionId,
+          saleId: paymentStatus.saleId || saleId,
+          amount: String(paymentStatus.amount || amount || 0),
           status: paymentStatus.status,
           statusDetail: paymentStatus.statusDetail,
           completedAt: paymentStatus.completedAt
@@ -108,18 +128,15 @@ export default function PaymentSuccess() {
 
         // Limpiar carrito y sessionStorage
         clearCart();
-        sessionStorage.removeItem("payway_tx_id");
-        sessionStorage.removeItem("payway_tx_timestamp");
-        sessionStorage.removeItem("payway_sale_id");
-        sessionStorage.removeItem("payway_amount");
+        cleanupSession();
 
         console.log("✅ [PAYMENT-SUCCESS] Pago aprobado exitosamente");
 
-      } else if (normalizedStatus === "pending") {
+      } else if (normalizedStatus === "pending" || normalizedStatus === "in_process") {
         // ⏳ PAGO PENDIENTE (raro en este punto, pero posible)
         setStatus("validating");
         setError("Tu pago está siendo procesado. Por favor espera unos momentos...");
-        
+
         // Reintentar después de 3 segundos
         setTimeout(() => {
           validatePayment();
@@ -139,6 +156,14 @@ export default function PaymentSuccess() {
     }
   };
 
+  const cleanupSession = () => {
+    // Claves actuales (mp_*) y legacy (payway_*)
+    ["mp_tx_id", "mp_tx_timestamp", "mp_sale_id", "mp_amount",
+     "mp_transactionId", "mp_checkoutId",
+     "payway_tx_id", "payway_tx_timestamp", "payway_sale_id", "payway_amount",
+     "payway_transactionId", "payway_checkoutId"].forEach(k => sessionStorage.removeItem(k));
+  };
+
   // ===== PANTALLA DE VALIDACIÓN =====
   if (status === "validating") {
     return (
@@ -148,11 +173,11 @@ export default function PaymentSuccess() {
           <div className="mb-6">
             <div className="w-20 h-20 border-4 border-[#F24C00] border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
-          
+
           <h2 className="text-2xl font-bold text-gray-900 mb-3">
             Validando tu pago...
           </h2>
-          
+
           <p className="text-gray-600 mb-4">
             Por favor espera mientras confirmamos tu transacción
           </p>
@@ -211,7 +236,7 @@ export default function PaymentSuccess() {
               <div className="flex justify-between items-center pb-2 border-b">
                 <span className="text-sm text-gray-600">N° de Pedido</span>
                 <span className="font-bold text-[#F24C00] text-lg">
-                  #{paymentData.saleId}
+                  #{paymentData.saleId || "N/D"}
                 </span>
               </div>
 

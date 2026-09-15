@@ -5,11 +5,11 @@ export default function PaymentCancel() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Limpiar datos de la sesión de pago
-    sessionStorage.removeItem("payway_tx_id");
-    sessionStorage.removeItem("payway_tx_timestamp");
-    sessionStorage.removeItem("payway_sale_id");
-    sessionStorage.removeItem("payway_amount");
+    // Limpiar datos de la sesión de pago (mp_* actuales + payway_* legacy)
+    ["mp_tx_id", "mp_tx_timestamp", "mp_sale_id", "mp_amount",
+     "mp_transactionId", "mp_checkoutId",
+     "payway_tx_id", "payway_tx_timestamp", "payway_sale_id", "payway_amount",
+     "payway_transactionId", "payway_checkoutId"].forEach((k) => sessionStorage.removeItem(k));
 
     console.log("🚫 [PAYMENT-CANCEL] Usuario canceló el pago");
   }, []);
