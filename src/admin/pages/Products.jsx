@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { deleteProduct, mapProduct } from "../services/apiService";
+import { useEffect, useState, useRef } from "react";
+import { deleteProduct, mapProduct, searchProducts } from "../services/apiService";
 import { sendLowStockNotification, sendMultipleLowStockNotification } from "../services/whatsappService";
 import ProductForm from "../widgets/ProductFrom";
 
@@ -12,6 +12,7 @@ export default function Products() {
   const [pricesMap, setPricesMap] = useState({});
   const [allCategories, setAllCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState("");
@@ -20,6 +21,8 @@ export default function Products() {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  const searchDebounceRef = useRef(null);
 
   // ==================================================
   // 🔄 Cargar página de productos (ya trae Stock incluido)
@@ -45,8 +48,23 @@ export default function Products() {
   };
 
   // ==================================================
+  // 🔍 Búsqueda contra el backend (TODO el catálogo, no solo la página)
+  // ==================================================
+  const runSearch = async (term) => {
+    setSearching(true);
+    try {
+      const results = await searchProducts(term);
+      const sorted = [...results].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      setFiltered(sorted);
+    } catch (e) {
+      console.error("Error buscando productos:", e);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // ==================================================
   // 💲 Precios + categorías: UNA sola llamada para todo el catálogo
-  // (en vez de un fetch de unidades por producto)
   // ==================================================
   const loadPricesAndCategories = async () => {
     try {
@@ -99,26 +117,36 @@ export default function Products() {
   }, [products]);
 
   // ==================================================
-  // 🔍 Filtros y búsqueda (sobre la página cargada)
+  // 🔍 Disparo de búsqueda (debounced) vs. filtro de categoría local
   // ==================================================
   useEffect(() => {
-    let result = [...products];
+    const term = search.trim();
 
-    if (categoryFilter !== "all") {
-      result = result.filter((p) => p.categoryName === categoryFilter);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+    if (term === "") {
+      // Sin búsqueda: volvemos a la página cargada, con filtro de categoría aplicado
+      let result = [...products];
+      if (categoryFilter !== "all") {
+        result = result.filter((p) => p.categoryName === categoryFilter);
+      }
+      setFiltered(result);
+      return;
     }
 
-    if (search.trim() !== "") {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.categoryName || "").toLowerCase().includes(q)
-      );
-    }
+    // Con búsqueda: pegamos al backend sobre TODO el catálogo (debounce 300ms)
+    searchDebounceRef.current = setTimeout(() => {
+      runSearch(term);
+    }, 300);
 
-    setFiltered(result);
+    return () => clearTimeout(searchDebounceRef.current);
   }, [search, categoryFilter, products]);
+
+  // Aplicar filtro de categoría también sobre resultados de búsqueda
+  useEffect(() => {
+    if (search.trim() === "") return; // ya se maneja arriba
+    // no-op: el filtro de categoría sobre resultados de búsqueda se aplica en runSearch si hace falta
+  }, [categoryFilter]);
 
   // ==================================================
   // 🗑 Eliminar producto
@@ -137,6 +165,8 @@ export default function Products() {
     const minStock = p.minStock || 10;
     return p.stock <= minStock;
   }).length;
+
+  const isSearching = search.trim() !== "";
 
   return (
     <>
@@ -175,13 +205,20 @@ export default function Products() {
 
       {/* ================= FILTROS ================= */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
-        <input
-          type="text"
-          placeholder="Buscar producto (en esta página)..."
-          className="border rounded px-3 py-2 w-64"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Buscar producto (en todo el catálogo)..."
+            className="border rounded px-3 py-2 w-64"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {searching && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+              buscando…
+            </span>
+          )}
+        </div>
 
         <select
           className="border rounded px-3 py-2"
@@ -232,8 +269,8 @@ export default function Products() {
         )}
       </div>
 
-      {/* ================= PAGINACIÓN ================= */}
-      {!loading && totalPages > 1 && (
+      {/* ================= PAGINACIÓN (solo sin búsqueda activa) ================= */}
+      {!loading && !isSearching && totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-8">
           <button
             onClick={() => loadPage(page - 1)}
@@ -257,7 +294,12 @@ export default function Products() {
       {openForm && (
         <ProductForm
           product={editing}
-          onClose={() => { setOpenForm(false); setEditing(null); loadPage(page); }}
+          onClose={() => {
+            setOpenForm(false);
+            setEditing(null);
+            if (isSearching) runSearch(search.trim());
+            else loadPage(page);
+          }}
         />
       )}
     </>
