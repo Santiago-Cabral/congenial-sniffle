@@ -1,7 +1,9 @@
 // src/admin/pages/SettingsPage.jsx
 import React, { useState } from "react";
-import { Store, Truck, CreditCard, Bell, Save, Plus, Trash2, MapPin, X } from "lucide-react";
+import { Store, Truck, CreditCard, Bell, Save, Plus, Trash2, MapPin, X, Image as ImageIcon, UploadCloud } from "lucide-react";
 import { useSettings } from "../../Context/SettingContext";
+import { uploadHeroImage } from "../../lib/uploadImage";
+import { normalizeHeroSlides } from "../../lib/heroSlides";
 import CouponsAdmin from "./Couponsadmin";
 
 export default function SettingsPage() {
@@ -23,9 +25,12 @@ export default function SettingsPage() {
   const [newZonePrice, setNewZonePrice] = useState("");
   const [newZoneLabel, setNewZoneLabel] = useState("");
   const [newLocalityInputs, setNewLocalityInputs] = useState({});
+  const [uploadingSlide, setUploadingSlide] = useState(null);
 
   // Si no hay settings todavía, mostramos un placeholder simple.
   if (!settings) return <div>Cargando configuración...</div>;
+
+  const heroSlides = normalizeHeroSlides(settings?.heroSlides, 3);
 
   const handleChange = (field, value) => {
     if (field === "freeShippingMinimum" || field === "shippingCost" || field === "defaultShippingPrice") {
@@ -93,6 +98,32 @@ export default function SettingsPage() {
 
     addLocalityToZone(zoneId, locality.trim());
     setNewLocalityInputs({ ...newLocalityInputs, [zoneId]: "" });
+  };
+
+  const handleHeroImageChange = async (index, file) => {
+    if (!file) return;
+    if (uploadingSlide !== null) return;
+    if (!file.type || !file.type.startsWith("image/")) {
+      alert("Seleccioná un archivo de imagen válido (JPG, PNG, WebP, etc.)");
+      return;
+    }
+
+    setUploadingSlide(index);
+    try {
+      const url = await uploadHeroImage(file);
+      const next = heroSlides.map((s, i) => (i === index ? { ...s, image: url } : s));
+      updateSetting("heroSlides", next);
+    } catch (err) {
+      console.error("Error subiendo banner:", err);
+      alert("No se pudo subir la imagen. Intentalo de nuevo.");
+    } finally {
+      setUploadingSlide(null);
+    }
+  };
+
+  const handleHeroTextChange = (index, field, value) => {
+    const next = heroSlides.map((s, i) => (i === index ? { ...s, [field]: value } : s));
+    updateSetting("heroSlides", next);
   };
 
   return (
@@ -191,6 +222,100 @@ export default function SettingsPage() {
             />
           </div>
         </div>
+      </div>
+
+      {/* Banner Principal (Hero) */}
+      <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <ImageIcon size={24} className="text-[#F24C00]" />
+          <div>
+            <h2 className="text-xl font-bold text-[#1C1C1C]">Banner Principal (Hero)</h2>
+            <p className="text-sm text-[#5A564E]">Imágenes del carrusel de portada. Se comprimen automáticamente a WebP para que la página cargue más rápido.</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {heroSlides.map((slide, index) => (
+            <div key={index} className="p-4 border-2 border-gray-200 rounded-xl">
+              <div className="flex items-center justify-between mb-4">
+                <p className="font-semibold text-[#1C1C1C]">Slide {index + 1}</p>
+
+                <label
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition cursor-pointer ${
+                    uploadingSlide === index
+                      ? "bg-gray-300 text-gray-600"
+                      : "bg-[#F24C00] text-white hover:brightness-110"
+                  }`}
+                >
+                  <UploadCloud size={16} />
+                  {uploadingSlide === index ? "Comprimiendo y subiendo..." : "Cambiar imagen"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      handleHeroImageChange(index, e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Vista previa */}
+                <div className="md:col-span-1">
+                  <div className="w-full h-36 rounded-lg overflow-hidden border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
+                    {slide.image ? (
+                      <img src={slide.image} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" />
+                    ) : (
+                      <p className="text-xs text-gray-400">Sin imagen</p>
+                    )}
+                  </div>
+                  {slide.image && (
+                    <p className="text-xs text-gray-500 mt-1 truncate" title={slide.image}>
+                      {slide.image}
+                    </p>
+                  )}
+                </div>
+
+                {/* Textos */}
+                <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Título</label>
+                    <input
+                      type="text"
+                      value={slide.title}
+                      onChange={(e) => handleHeroTextChange(index, "title", e.target.value)}
+                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-[#F24C00] focus:ring-4 focus:ring-[#F24C00]/10 transition outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Subtítulo</label>
+                    <input
+                      type="text"
+                      value={slide.subtitle}
+                      onChange={(e) => handleHeroTextChange(index, "subtitle", e.target.value)}
+                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-[#F24C00] focus:ring-4 focus:ring-[#F24C00]/10 transition outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Texto del botón</label>
+                    <input
+                      type="text"
+                      value={slide.cta}
+                      onChange={(e) => handleHeroTextChange(index, "cta", e.target.value)}
+                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-[#F24C00] focus:ring-4 focus:ring-[#F24C00]/10 transition outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs text-gray-500 mt-4">
+          💡 Recomendación: imágenes horizontales (por ejemplo 1900x800). Se suben al catálogo con la compresión incluida.
+        </p>
       </div>
 
       {/* Configuración de Envío */}

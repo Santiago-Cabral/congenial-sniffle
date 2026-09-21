@@ -1,6 +1,7 @@
 // src/Context/SettingContext.jsx
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { getSettings, updateSettings as apiUpdateSettings } from "../admin/services/apiService";
+import { DEFAULT_HERO_SLIDES, normalizeHeroSlides } from "../lib/heroSlides";
 
 const CACHE_KEY = "jovita_settings_cache";
 
@@ -31,7 +32,9 @@ const defaultSettings = {
   emailNewOrder: true,
   emailLowStock: true,
   whatsappNewOrder: false,
-  whatsappLowStock: false
+  whatsappLowStock: false,
+  heroSlides: DEFAULT_HERO_SLIDES,
+  categoryImages: {}
 };
 
 const SettingsContext = createContext(null);
@@ -65,6 +68,11 @@ export function SettingsProvider({ children }) {
     const merged = { ...defaultSettings, ...incoming };
 
     merged.shippingZones = normalizeZones(incoming.shippingZones ?? defaultSettings.shippingZones);
+    merged.heroSlides = normalizeHeroSlides(incoming.heroSlides, 3);
+    merged.categoryImages =
+      incoming.categoryImages && typeof incoming.categoryImages === "object"
+        ? { ...defaultSettings.categoryImages, ...incoming.categoryImages }
+        : defaultSettings.categoryImages;
 
     merged.freeShippingMinimum = Number(incoming.freeShippingMinimum ?? defaultSettings.freeShippingMinimum);
     merged.shippingCost = Number(incoming.shippingCost ?? defaultSettings.shippingCost);
@@ -263,6 +271,7 @@ export function SettingsProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSettings() {
   const ctx = useContext(SettingsContext);
   if (!ctx) throw new Error("useSettings must be used within SettingsProvider");

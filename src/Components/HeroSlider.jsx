@@ -1,31 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-
-const slides = [
-  {
-    title: "Vitaminas y Minerales",
-    subtitle: "Fortalece tu sistema inmunológico",
-    cta: "Descubrir más",
-    image: "/banners-salud-hd.png",
-    href: "#productos",
-  },
-  {
-    title: "Alimentos Orgánicos y Naturales",
-    subtitle: "Productos naturales para tu bienestar",
-    cta: "Ver productos",
-    image: "/banner-j.webp",
-    href: "#productos",
-  },
-  {
-    title: "Alimentos para Mascotas",
-    subtitle: "Cuida a tus amigos peludos",
-    cta: "Ver productos",
-    image: "/banners-perros-hd.png",
-    href: "#productos",
-  },
-];
+import { useSettings } from "../Context/SettingContext";
+import { DEFAULT_HERO_SLIDES, normalizeHeroSlides } from "../lib/heroSlides";
 
 export default function HeroSlider() {
+  let settings = {};
+  try {
+    const ctx = useSettings();
+    settings = ctx?.settings ?? {};
+  } catch {
+    console.warn("SettingsProvider no encontrado — usando slides por defecto del banner.");
+  }
+
+  const slides = normalizeHeroSlides(settings.heroSlides, DEFAULT_HERO_SLIDES.length);
   const [current, setCurrent] = useState(0);
   const intervalRef = useRef(null);
   const touchStartX = useRef(null);

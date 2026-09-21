@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSettings } from "../Context/SettingContext";
 import {
   Pill, Apple, HeartPulse, Leaf, Droplet, Coffee, Package, Wheat, Cat, PawPrint,
 } from "lucide-react";
@@ -39,6 +40,14 @@ export default function CategoriesSection() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  let categoryImages = {};
+  try {
+    const ctx = useSettings();
+    categoryImages = ctx?.settings?.categoryImages ?? {};
+  } catch {
+    console.warn("SettingsProvider no encontrado — usando imágenes por defecto de categorías.");
+  }
+
   useEffect(() => {
     fetch("https://forrajeria-jovita-api.onrender.com/api/Categories/with-counts")
       .then((res) => res.json())
@@ -59,7 +68,7 @@ export default function CategoriesSection() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {categories.map((cat, idx) => {
             const Icon = iconByCategoryName(cat.title);
-            const image = imageByCategoryName(cat.title);
+            const image = categoryImages[cat.title] || imageByCategoryName(cat.title);
 
             return (
               <button

@@ -7,8 +7,19 @@ import {
   deleteCategory,
   listProducts
 } from "../services/apiService";
+import { useSettings } from "../../Context/SettingContext";
+import { uploadCategoryImage } from "../../lib/uploadImage";
 
 export default function Categories() {
+  let settingsContext = {};
+  try {
+    const ctx = useSettings();
+    settingsContext = ctx;
+  } catch {
+    // Si no hay provider, seguimos sin fotos personalizadas
+  }
+  const { settings, updateSetting, saveSettings } = settingsContext;
+
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -16,6 +27,7 @@ export default function Categories() {
   const [formData, setFormData] = useState({ name: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [uploadingCategory, setUploadingCategory] = useState(null);
 
   useEffect(() => {
     loadCategories();
@@ -106,6 +118,37 @@ export default function Categories() {
     } catch (err) {
       setError(err.message || "Error al guardar la categoría");
       console.error(err);
+    }
+  }
+
+  async function handlePhotoUpload(category, file) {
+    if (!file) return;
+    if (uploadingCategory) return;
+
+    const images = settings?.categoryImages ?? {};
+    setError("");
+    setSuccess("");
+    setUploadingCategory(category.name);
+
+    try {
+      const url = await uploadCategoryImage(file);
+      if (!updateSetting || !saveSettings) {
+        setError("No hay conexión con la configuración. Recargá la página e intentá de nuevo.");
+        return;
+      }
+      updateSetting("categoryImages", { ...images, [category.name]: url });
+      const result = await saveSettings();
+      if (result?.ok) {
+        setSuccess(`Foto de "${category.name}" actualizada`);
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        setError(result?.error || "No se pudo guardar la foto. Revisá que estés logueado como admin.");
+      }
+    } catch (err) {
+      console.error("Error subiendo foto de categoría:", err);
+      setError(err?.message || "Error al subir la foto de la categoría");
+    } finally {
+      setUploadingCategory(null);
     }
   }
 
@@ -233,6 +276,46 @@ export default function Categories() {
               }`}
             >
               <div className="p-5">
+                {/* Foto de la categoría */}
+                <div className="relative w-full h-32 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 mb-4">
+                  {settings?.categoryImages?.[category.name] ? (
+                    <img
+                      src={settings.categoryImages[category.name]}
+                      alt={category.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                  <label
+                    className={`absolute bottom-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium cursor-pointer transition ${
+                      uploadingCategory === category.name
+                        ? "bg-gray-600 text-white"
+                        : "bg-black/60 hover:bg-black/75 text-white"
+                    }`}
+                    title={`Cambiar foto de "${category.name}"`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {uploadingCategory === category.name ? "Subiendo..." : "Cambiar foto"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        handlePhotoUpload(category, e.target.files?.[0]);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-800 mb-1 group-hover:text-green-600 transition-colors">

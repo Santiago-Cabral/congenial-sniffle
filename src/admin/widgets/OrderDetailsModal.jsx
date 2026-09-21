@@ -10,8 +10,8 @@ import {
   Mail,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
-import { updateOrderStatus } from "../services/apiService";
+import { useState, useEffect } from "react";
+import { updateOrderStatus, listProducts } from "../services/apiService";
 
 function formatMoney(value) {
   const n = Number(value) || 0;
@@ -142,7 +142,7 @@ function extractCustomerInfo(order) {
   if (extRaw) {
     try {
       parsedExternal = typeof extRaw === "string" ? JSON.parse(extRaw) : extRaw;
-    } catch (e) {
+    } catch {
       parsedExternal = null;
     }
   }
@@ -187,13 +187,50 @@ function extractCustomerInfo(order) {
 }
 
 export default function OrderDetailsModal({ order, onClose, onStatusChange, onDelete }) {
-  if (!order) return null;
-
-  const items = Array.isArray(order.items) ? order.items : Array.isArray(order.Items) ? order.Items : [];
+  const rawItems = Array.isArray(order?.items)
+    ? order.items
+    : Array.isArray(order?.Items)
+    ? order.Items
+    : [];
+  const items = rawItems.filter(Boolean);
+  const [productNames, setProductNames] = useState({});
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Fallback: si el item viene sin nombre, resolverlo desde el catálogo por productId.
+  useEffect(() => {
+    let active = true;
+    listProducts()
+      .then((prods) => {
+        if (!active) return;
+        const map = {};
+        (prods || []).forEach((p) => {
+          if (p && p.id != null) map[p.id] = p.name;
+        });
+        setProductNames(map);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (!order) return null;
+
+  const resolveItemName = (it) => {
+    if (!it) return "";
+    const generic = (candidate) =>
+      !candidate || /^producto\s*(#\d+)?$/i.test(String(candidate).trim());
+    const direct =
+      (typeof it.productName === "string" && !generic(it.productName) && it.productName.trim()) ||
+      (typeof it.name === "string" && !generic(it.name) && it.name.trim());
+    if (direct) return direct;
+    const fromCatalog = it.productId != null ? productNames[it.productId] : null;
+    if (fromCatalog) return fromCatalog;
+    return it.productId != null ? `Producto #${it.productId}` : "Producto";
+  };
 
   const statusInfo = getStatusInfo(order.paymentStatus);
 
@@ -427,15 +464,27 @@ export default function OrderDetailsModal({ order, onClose, onStatusChange, onDe
 
         <h4 className="font-semibold mb-2">Productos</h4>
         <div className="space-y-3 mb-6">
-          {items.map((it, idx) => (
-            <div key={idx} className="p-3 border rounded-xl flex justify-between bg-gray-50">
-              <div>
-                <div className="font-semibold">{it.productName || it.name}</div>
-                <div className="text-xs text-gray-500">Cantidad: {it.quantity} · Precio: ${formatMoney(it.unitPrice || it.price)}</div>
-              </div>
-              <div className="font-bold text-[#F24C00]">${formatMoney((it.quantity || 1) * (it.unitPrice || it.price || 0))}</div>
+          {items.length === 0 ? (
+            <div className="p-4 border rounded-xl bg-gray-50 text-sm text-gray-500">
+              No se pudieron cargar los productos de esta orden.
             </div>
-          ))}
+          ) : (
+            items.map((it, idx) => {
+              const qty = Number(it.quantity) || 1;
+              const price = Number(it.unitPrice || it.price) || 0;
+              return (
+                <div key={idx} className="p-3 border rounded-xl flex justify-between bg-gray-50">
+                  <div>
+                    <div className="font-semibold">{resolveItemName(it)}</div>
+                    <div className="text-xs text-gray-500">
+                      Cantidad: {qty} · Precio: ${formatMoney(price)}
+                    </div>
+                  </div>
+                  <div className="font-bold text-[#F24C00]">${formatMoney(qty * price)}</div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         <div className="border-t pt-4 space-y-2">

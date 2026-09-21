@@ -21,6 +21,56 @@ async function compressImage(file, maxWidthOrHeight, maxSizeMB) {
 }
 
 /* =====================================
+   SUBIR IMAGEN DEL BANNER HERO (comprimida en WebP)
+   ===================================== */
+export async function uploadHeroImage(file) {
+  if (!file) return null;
+
+  const compressed = await compressImage(file, 1900, 0.35);
+
+  const base = `hero-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  const fileName = `${base}.webp`;
+
+  const upload = await supabase.storage.from(bucketName).upload(fileName, compressed, {
+    cacheControl: "31536000",
+    upsert: false,
+  });
+
+  if (upload.error) {
+    console.error("Upload error (hero):", upload.error);
+    throw upload.error;
+  }
+
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+  return data.publicUrl;
+}
+
+/* =====================================
+   SUBIR IMAGEN DE CATEGORÍA (comprimida en WebP)
+   ===================================== */
+export async function uploadCategoryImage(file) {
+  if (!file) return null;
+
+  const compressed = await compressImage(file, 1200, 0.3);
+
+  const base = `category-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  const fileName = `${base}.webp`;
+
+  const upload = await supabase.storage.from(bucketName).upload(fileName, compressed, {
+    cacheControl: "31536000",
+    upsert: false,
+  });
+
+  if (upload.error) {
+    console.error("Upload error (category):", upload.error);
+    throw upload.error;
+  }
+
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+  return data.publicUrl;
+}
+
+/* =====================================
    SUBIR UNA SOLA IMAGEN (genera full + thumb)
    ===================================== */
 export async function uploadSingleImage(file) {

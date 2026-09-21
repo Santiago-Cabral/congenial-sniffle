@@ -2,9 +2,10 @@
 // 🌐 API SERVICE - FORRAJERÍA JOVITA
 // =======================================
 
-import { 
+import {
   sendNewOrderNotification
 } from './whatsappService';
+import { DEFAULT_HERO_SLIDES } from '../../lib/heroSlides';
 
 const API_URL = "https://forrajeria-jovita-api.onrender.com/api";
 
@@ -99,7 +100,7 @@ async function request(url, method = "GET", body = null, auth = false) {
     try {
       const parsed = JSON.parse(text);
       return parsed;
-    } catch (parseError) {
+    } catch {
       throw new Error("Respuesta del servidor en formato inválido");
     }
   } catch (error) {
@@ -173,13 +174,32 @@ function mapClient(c) {
   };
 }
 
+function pickFirstNonEmptyName(...values) {
+  for (const v of values) {
+    if (typeof v === "string" && v.trim()) return v.trim();
+    if (v && typeof v === "object") {
+      const nested = v.Name ?? v.name ?? null;
+      if (typeof nested === "string" && nested.trim()) return nested.trim();
+    }
+  }
+  return "";
+}
+
 function mapSaleItem(item) {
   if (!item) return null;
   return {
     productId: item.ProductId ?? item.productId,
-    productName: item.ProductName ?? item.productName ?? "Producto",
+    productName: pickFirstNonEmptyName(
+      item.ProductName,
+      item.productName,
+      item.Name,
+      item.name,
+      item.ItemName,
+      item.Description,
+      item.Product && item.Product.Name
+    ),
     quantity: Number(item.Quantity ?? item.quantity ?? 0),
-    unitPrice: Number(item.UnitPrice ?? item.unitPrice ?? 0),
+    unitPrice: Number(item.UnitPrice ?? item.unitPrice ?? item.Price ?? item.price ?? 0),
     discount: Number(item.Discount ?? item.discount ?? 0),
     total: Number(item.Total ?? item.total ?? 0),
   };
@@ -1057,6 +1077,8 @@ function getDefaultSettings() {
     emailNewOrder: true,
     emailLowStock: true,
     whatsappNewOrder: false,
-    whatsappLowStock: false
+    whatsappLowStock: false,
+    heroSlides: DEFAULT_HERO_SLIDES,
+    categoryImages: {}
   };
 }
