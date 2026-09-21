@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { getProduct } from "../admin/services/apiService";
 import { useCart } from "../Context/CartContext";
 import { ShoppingCart, ArrowLeft, Package, Truck, Shield } from "lucide-react";
-import foto from "../../public/sin-foto.png";
+import foto from "../../public/sin-foto.webp";
 import UnitPickerModal from "../Components/UnitPickerModal";
 
 export default function ProductPage() {
@@ -18,6 +18,7 @@ export default function ProductPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     getProduct(id)
       .then(setProduct)
@@ -179,13 +180,13 @@ export default function ProductPage() {
   );
 }
 
-function Feature({ icon: Icon, text }) {
+function Feature(props) {
   return (
     <div className="text-center">
       <div className="w-12 h-12 bg-[#FFE8D8] rounded-full flex items-center justify-center mx-auto mb-2">
-        <Icon size={24} color="#F24C00" />
+        <props.icon size={24} color="#F24C00" />
       </div>
-      <p className="text-xs text-[#5A564E]">{text}</p>
+      <p className="text-xs text-[#5A564E]">{props.text}</p>
     </div>
   );
 }

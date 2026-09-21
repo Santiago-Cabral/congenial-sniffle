@@ -13,6 +13,7 @@ export default function SearchOverlay({ open, onClose }) {
     const term = query.trim();
 
     if (!term) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       setLoading(false);
       return;
@@ -31,6 +32,7 @@ export default function SearchOverlay({ open, onClose }) {
   // Resetear el estado cuando se cierra el overlay
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuery("");
       setResults([]);
       setLoading(false);
@@ -104,7 +106,7 @@ export default function SearchOverlay({ open, onClose }) {
                   {/* Imagen */}
                   <div className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border border-[#e4d9c7]">
                     <img
-                      src={p.image || "/placeholder.png"}
+                      src={p.image || "/sin-foto.webp"}
                       alt={p.name}
                       className="w-full h-full object-cover"
                     />

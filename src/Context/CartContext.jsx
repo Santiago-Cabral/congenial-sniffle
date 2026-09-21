@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 
 const CartContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useCart() {
   const context = useContext(CartContext);
   if (!context) {
@@ -39,7 +40,7 @@ function normalizeProduct(p, unitOverride = null) {
     name: p.name || p.nombre || "Producto",
     price,
     stock: p.stock === null || p.stock === undefined ? 999 : Number(p.stock),
-    image: invalidImage ? "/placeholder.png" : img,
+    image: invalidImage ? "/sin-foto.webp" : img,
     category: p.categoryName || p.category || p.categoria || "Sin categoría",
     isActived: p.isActived === undefined ? true : p.isActived !== false,
     // Datos de unidad para mostrar en carrito y checkout

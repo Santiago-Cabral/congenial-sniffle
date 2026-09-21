@@ -36,7 +36,7 @@ export default function CartSidebar({ open, onClose }) {
               {cart.map((item) => (
                 <div key={item.cartKey} className="flex gap-4 bg-gray-50 p-4 rounded-xl items-center">
                   <img
-                    src={item.image || "/sin-foto.png"}
+                    src={item.image || "/sin-foto.webp"}
                     alt={item.name}
                     className="w-20 h-20 object-cover rounded-lg"
                   />

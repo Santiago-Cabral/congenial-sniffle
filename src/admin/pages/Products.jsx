@@ -243,7 +243,7 @@ export default function Products() {
           filtered.map((p) => (
             <div key={p.id} className="bg-white p-4 rounded flex items-center justify-between shadow">
               <div className="flex items-center gap-4">
-                <img src={p.image || "/sin-foto.png"} className="w-14 h-14 object-cover rounded" alt={p.name} />
+                <img src={p.image || "/sin-foto.webp"} className="w-14 h-14 object-cover rounded" alt={p.name} />
                 <div>
                   <div className="font-semibold">{p.name}</div>
                   <div className="text-sm text-gray-500">{p.categoryName || "Sin categoría"} · {p.baseUnit}</div>

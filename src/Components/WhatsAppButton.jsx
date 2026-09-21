@@ -126,7 +126,7 @@ export default function WhatsAppAssistant() {
                         <div key={p.id} className="bg-[#FDF7EF] border rounded-xl p-3">
                           <div className="flex gap-3">
                             <img
-                              src={p.image || "/placeholder.png"}
+                              src={p.image || "/sin-foto.webp"}
                               alt={p.name}
                               className="w-14 h-14 object-cover rounded-lg border"
                             />

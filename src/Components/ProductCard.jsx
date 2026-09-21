@@ -3,7 +3,7 @@ import { ShoppingCart, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCart } from "../Context/CartContext";
 import { useProducts } from "../Context/ProductsContext";
-import fotoDefault from "../../public/sin-foto.png";
+import fotoDefault from "../../public/sin-foto.webp";
 
 const SUPABASE_PUBLIC_URL = import.meta.env.VITE_SUPABASE_PUBLIC_URL;
 

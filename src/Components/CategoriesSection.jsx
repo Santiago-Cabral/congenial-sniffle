@@ -24,15 +24,15 @@ const iconByCategoryName = (name = "") => {
 
 const imageByCategoryName = (name = "") => {
   const n = normalize(name);
-  if (n.includes("suplement") || n.includes("proteina")) return "/hero-slide-protein-supplements.jpg";
-  if (n.includes("vitamina") || n.includes("omega")) return "/hero-slide-vitamins.jpg";
-  if (n.includes("te") || n.includes("infusion") || n.includes("mate")) return "/category-teas.jpg";
-  if (n.includes("organico") || n.includes("natural")) return "/healthy-natural-food-store-interior.jpg";
-  if (n.includes("cereal") || n.includes("chia") || n.includes("quinoa")) return "/organic-quinoa-in-bag.jpg";
+  if (n.includes("suplement") || n.includes("proteina")) return "/hero-slide-protein-supplements.webp";
+  if (n.includes("vitamina") || n.includes("omega")) return "/hero-slide-vitamins.webp";
+  if (n.includes("te") || n.includes("infusion") || n.includes("mate")) return "/category-teas.webp";
+  if (n.includes("organico") || n.includes("natural")) return "/healthy-natural-food-store-interior-with-fresh-pro.webp";
+  if (n.includes("cereal") || n.includes("chia") || n.includes("quinoa")) return "/organic-quinoa-in-bag.webp";
   if (n.includes("perro") || n.includes("mascota")) return "/mascotas.webp";
   if (n.includes("gato")) return "/gatos.webp";
-  if (n.includes("aceite")) return "/organic-honey-jar.jpg";
-  return "/otros.png";
+  if (n.includes("aceite")) return "/organic-honey-jar.webp";
+  return "/otros.webp";
 };
 
 export default function CategoriesSection() {

@@ -59,7 +59,7 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 flex flex-col z-40">
       {/* Logo */}
       <div className="h-20 flex items-center gap-3 px-6 border-b border-gray-200">
-        <img src="/logo-jovita.png" alt="Jovita" className="w-10 h-10 rounded-full" />
+        <img src="/logo-jovita.webp" alt="Jovita" className="w-10 h-10 rounded-full" />
         <div>
           <h2 className="font-bold text-lg text-[#1C1C1C]">Jovita Admin</h2>
           <p className="text-xs text-[#5A564E]">
