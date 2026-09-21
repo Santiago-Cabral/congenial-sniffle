@@ -80,6 +80,10 @@ export default function CategoriesSection() {
                 <img
                   src={image}
                   alt={cat.title}
+                  loading="lazy"
+                  decoding="async"
+                  width={576}
+                  height={224}
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />

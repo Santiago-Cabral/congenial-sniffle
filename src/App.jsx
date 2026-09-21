@@ -1,6 +1,6 @@
 // src/App.jsx
+import { Suspense, lazy, useState } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { useState } from "react";
 
 import Navbar from "./Components/Navbar";
 import HeroSlider from "./Components/HeroSlider";
@@ -11,21 +11,20 @@ import AboutSection from "./Components/AboutSection";
 import Footer from "./Components/Footer";
 import FeaturedProductsCarousel from "./Components/Featuredproductscarousel";
 import CartSidebar from "./Components/CartSidebar";
-import ProductPage from "./pages/Product";
-import AllProducts from "../src/Components/AllProducts.jsx";
-
-import AdminApp from "./admin/AppAdmin";
 import WhatsAppAssistant from "./Components/WhatsAppButton";
 
-import UserLoginPage from "./pages/UserLoginPage.jsx";
-import PerfilPage from "./pages/PerfilPage";
 import { useUserAuth } from "./Context/UserAuthContext";
 import { useProducts } from "./Context/ProductsContext";
 
-import Error404 from "./pages/Error404";
-import PaymentSuccess from "./pages/PaymentSuccess";
-import PaymentCancel from "./pages/PaymentCancel";
-import CheckoutPage from "./pages/Checkout";
+const AdminApp = lazy(() => import("./admin/AppAdmin"));
+const ProductPage = lazy(() => import("./pages/Product"));
+const AllProducts = lazy(() => import("./Components/AllProducts.jsx"));
+const UserLoginPage = lazy(() => import("./pages/UserLoginPage.jsx"));
+const PerfilPage = lazy(() => import("./pages/PerfilPage"));
+const Error404 = lazy(() => import("./pages/Error404"));
+const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
+const PaymentCancel = lazy(() => import("./pages/PaymentCancel"));
+const CheckoutPage = lazy(() => import("./pages/Checkout"));
 
 function ProtectedClientRoute({ children }) {
   const { isAuthenticated } = useUserAuth();
@@ -94,7 +93,14 @@ export default function App() {
       <CartSidebar open={cartOpen} onClose={() => setCartOpen(false)} />
 
       <main className="pt-20">
-        <Routes>
+        <Suspense
+          fallback={
+            <div className="min-h-[50vh] flex items-center justify-center">
+              <div className="w-14 h-14 border-4 border-[#F24C00]/20 border-t-[#F24C00] rounded-full animate-spin" />
+            </div>
+          }
+        >
+          <Routes>
           {/* HOME */}
           <Route
             path="/"
@@ -140,7 +146,8 @@ export default function App() {
 
           <Route path="/404" element={<Error404 />} />
           <Route path="*" element={<Error404 />} />
-        </Routes>
+          </Routes>
+        </Suspense>
       </main>
 
       {!isAdminRoute && <Footer />}
