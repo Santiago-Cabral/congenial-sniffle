@@ -128,6 +128,10 @@ export default function WhatsAppAssistant() {
                             <img
                               src={p.image || "/sin-foto.webp"}
                               alt={p.name}
+                              loading="lazy"
+                              decoding="async"
+                              width={56}
+                              height={56}
                               className="w-14 h-14 object-cover rounded-lg border"
                             />
 

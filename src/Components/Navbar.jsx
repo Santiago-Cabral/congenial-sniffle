@@ -22,7 +22,7 @@ export default function Navbar({ onOpenCart }) {
           {/* LEFT */}
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center gap-3">
-              <img src="/logo-jovita.webp" alt="Jovita" className="h-12" />
+              <img src="/logo-jovita.webp" alt="Jovita" width={48} height={48} className="h-12" />
             </Link>
 
             <nav className="hidden md:flex gap-8">

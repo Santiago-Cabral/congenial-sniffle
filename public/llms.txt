@@ -1,0 +1,16 @@
+# Forrajería Jovita
+
+Forrajería Jovita es una dietética natural en Yerba Buena, Tucumán, Argentina. Venta online de productos naturales y saludables, complementos, suplementos y alimentos para mascotas.
+
+## Página principal
+- [Inicio](https://www.jovita.store/) — catálogo de productos, categorías, novedades.
+- [Productos](https://www.jovita.store/products) — listado de productos disponibles.
+- [Nosotros](https://www.jovita.store/nosotros) — información sobre el negocio.
+
+## Datos de contacto
+- Teléfono: +54 9 3814669136
+- Email: contacto@jovita.store
+- Dirección: Aragón 34, Yerba Buena, Tucumán, Argentina
+
+## Categorías principales
+Vitaminas y minerales, suplementos, alimentos orgánicos y naturales, infusiones y tés, cereales y harinas, aceites, y alimentos para mascotas.

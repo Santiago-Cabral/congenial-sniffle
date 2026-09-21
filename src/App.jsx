@@ -37,8 +37,10 @@ function GlobalLoader() {
     <div className="fixed inset-0 bg-[#FAFAF8] flex flex-col items-center justify-center z-50">
       {/* Logo */}
       <img
-        src="/logo.png"
+        src="/logo-jovita.webp"
         alt="Jovita"
+        width={96}
+        height={96}
         className="w-24 h-24 object-contain mb-8"
         onError={(e) => { e.target.style.display = "none"; }}
       />

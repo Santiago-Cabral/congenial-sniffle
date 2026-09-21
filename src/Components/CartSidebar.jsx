@@ -38,6 +38,10 @@ export default function CartSidebar({ open, onClose }) {
                   <img
                     src={item.image || "/sin-foto.webp"}
                     alt={item.name}
+                    loading="lazy"
+                    decoding="async"
+                    width={80}
+                    height={80}
                     className="w-20 h-20 object-cover rounded-lg"
                   />
 

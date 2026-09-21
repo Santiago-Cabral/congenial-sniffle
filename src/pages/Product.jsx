@@ -92,7 +92,7 @@ export default function ProductPage() {
         <div className="grid md:grid-cols-2 gap-12 bg-white rounded-2xl shadow-xl p-8">
           {/* Imagen */}
           <div className="relative overflow-hidden rounded-2xl bg-gray-100">
-            <img src={finalImage} alt={name} className="w-full h-[500px] object-cover" />
+            <img src={finalImage} alt={name} fetchpriority="high" decoding="async" width={700} height={500} className="w-full h-[500px] object-cover" />
             <div className="absolute top-4 left-4 flex flex-col gap-2">
               {category && (
                 <span className="bg-[#8BBF00] text-[#072000] px-4 py-2 rounded-full text-sm font-bold shadow-lg">

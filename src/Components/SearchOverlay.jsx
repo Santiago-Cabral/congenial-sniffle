@@ -108,6 +108,10 @@ export default function SearchOverlay({ open, onClose }) {
                     <img
                       src={p.image || "/sin-foto.webp"}
                       alt={p.name}
+                      loading="lazy"
+                      decoding="async"
+                      width={64}
+                      height={64}
                       className="w-full h-full object-cover"
                     />
                   </div>
