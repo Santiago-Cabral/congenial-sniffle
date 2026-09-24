@@ -201,6 +201,9 @@ export default function ProductForm({ product, onClose }) {
   const handleChange = (field, value) =>
     setForm(prev => ({ ...prev, [field]: value }));
 
+  // ✅ FIX: uploadSingleImage devuelve { url, thumbUrl }, no un string.
+  // Antes se guardaba el objeto completo en `images`, y al mandarlo como
+  // `image` al backend .NET fallaba la conversión a string (error $.image).
   const handleFilesChange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -209,8 +212,8 @@ export default function ProductForm({ product, onClose }) {
     try {
       const urls = [];
       for (const file of files) {
-        const url = await uploadSingleImage(file, "products");
-        if (url) urls.push(url);
+        const result = await uploadSingleImage(file); // ya no se pasa "products", la función no lo usa
+        if (result?.url) urls.push(result.url);        // extraemos el string de la URL, no el objeto
       }
       if (!urls.length) throw new Error("No se pudieron subir las imágenes");
       setImages(prev => [...prev, ...urls]);
