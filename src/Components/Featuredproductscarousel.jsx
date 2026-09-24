@@ -4,15 +4,15 @@ import { useProducts } from "../Context/ProductsContext";
 import ProductCard from "./ProductCard";
 
 export default function FeaturedProductsCarousel() {
-  const { products, loading } = useProducts();
+  // ✅ FIX: antes se hacía products.filter(p => p.isFeatured...) sobre el
+  // array paginado (solo los primeros 50 productos). Ahora se usa la lista
+  // dedicada `featuredProducts` que trae el context, sin depender de la
+  // paginación del catálogo general.
+  const { featuredProducts, loadingFeatured } = useProducts();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef(null);
-
-  const featuredProducts = products.filter(
-    (p) => p.isFeatured === true && p.isActived === true
-  );
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -58,7 +58,7 @@ export default function FeaturedProductsCarousel() {
     );
   };
 
-  if (loading) {
+  if (loadingFeatured) {
     return (
       <section className="relative py-24 bg-[#FAFAF8]">
         <div className="absolute inset-0 pointer-events-none overflow-hidden">

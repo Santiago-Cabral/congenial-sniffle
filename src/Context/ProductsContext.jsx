@@ -18,6 +18,12 @@ export function ProductsProvider({ children }) {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
+  // ✅ Destacados: lista propia, independiente de la paginación del catálogo.
+  // Antes el carrusel filtraba sobre `products`, que solo trae los primeros
+  // PAGE_SIZE productos — si el destacado quedaba fuera de esa página, no aparecía.
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
+
   // ⭐ Precio real + cantidad de presentaciones, para TODO el catálogo, en una sola llamada.
   // Reemplaza los fetches individuales que hacía cada ProductCard.
   const [unitsMap, setUnitsMap] = useState({});
@@ -49,6 +55,23 @@ export function ProductsProvider({ children }) {
     }
   }, []);
 
+  // ✅ Trae SOLO los destacados, sin paginación, directo del backend
+  // (GET /api/Products?featured=true — el controller ignora page/pageSize acá).
+  const fetchFeaturedProducts = useCallback(async () => {
+    try {
+      setLoadingFeatured(true);
+      const res = await fetch(`${API_URL}/Products?featured=true`);
+      const data = await res.json();
+      const normalized = (Array.isArray(data) ? data : []).map(mapProduct);
+      setFeaturedProducts(normalized);
+    } catch (err) {
+      console.error("❌ Error cargando productos destacados", err);
+      setFeaturedProducts([]);
+    } finally {
+      setLoadingFeatured(false);
+    }
+  }, []);
+
   const fetchUnitsMap = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/Products/all-with-units`);
@@ -74,8 +97,9 @@ export function ProductsProvider({ children }) {
 
   useEffect(() => {
     fetchPage(1, { append: false });
+    fetchFeaturedProducts();
     fetchUnitsMap();
-  }, [fetchPage, fetchUnitsMap]);
+  }, [fetchPage, fetchFeaturedProducts, fetchUnitsMap]);
 
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
@@ -91,6 +115,9 @@ export function ProductsProvider({ children }) {
         hasMore,
         totalCount,
         loadMore,
+        featuredProducts,
+        loadingFeatured,
+        refetchFeaturedProducts: fetchFeaturedProducts,
         unitsMap,
         unitsMapLoaded,
       }}
